@@ -1,0 +1,140 @@
+.card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 360px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.processing-card {
+  border-left: 5px solid #3b82f6;
+}
+
+.error-card {
+  border-left: 5px solid #ef4444;
+  background: #fff5f5;
+}
+
+.spinner {
+  margin-top: 16px;
+  width: 28px;
+  height: 28px;
+  border: 4px solid #ddd;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+.issue-card {
+  border-left: 5px solid #22c55e;
+}
+
+.student-info {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 6px;
+}
+
+
+
+.return-card {
+  border-left: 5px solid #3b82f6;
+}
+
+.issued-list {
+  margin-top: 10px;
+}
+
+.issued-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.issued-name {
+  font-size: 14px;
+}
+
+.issued-count {
+  display: block;
+  font-size: 12px;
+  color: #666;
+}
+
+input {
+  width: 80px;
+  padding: 4px;
+}
+
+.success-card {
+  border-left: 5px solid #22c55e;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.success-card h3 {
+  margin-bottom: 6px;
+}
+.error-flash {
+  border-left: 5px solid #ef4444;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.error-flash h3 {
+  margin-bottom: 6px;
+}
+.card {
+  border: 1px solid #ccc;
+  padding: 20px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.processing-card {
+  text-align: center;
+}
+
+.scanner-animation {
+  margin-top: 20px;
+}
+
+.pulse {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #4caf50;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
