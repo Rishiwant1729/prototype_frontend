@@ -476,6 +476,117 @@ export default function SportRoom() {
   const kpiValueStyle = { fontSize: 28, fontWeight: 800, color: '#ffffff' };
   const kpiLabelStyle = { fontSize: 12, color: 'rgba(255,255,255,0.75)' };
 
+  // Time range for usage panel
+  const [usageRange, setUsageRange] = useState('day'); // 'day' | 'week' | 'month'
+
+  // Compute usage aggregated for selected range
+  const usageForRange = useMemo(() => {
+    const days = usageRange === 'day' ? 1 : usageRange === 'week' ? 7 : 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (days - 1)); // include today
+
+    const agg = {};
+    const getQty = (it) => Number(it?.qty ?? it?.issued_qty ?? it?.quantity ?? it?.count ?? 1) || 0;
+
+    (recent || []).forEach(ev => {
+      const ts = new Date(ev.issued_at || ev.timestamp || ev.created_at || Date.now());
+      if (ts < cutoff) return;
+      const action = (ev.action || ev.mode || ev.type || '').toString().toUpperCase();
+      const isIssued = action.includes('ISSUED') || action === 'ISSUED';
+      if (!isIssued) return;
+
+      const items = Array.isArray(ev.items) ? ev.items : (ev.items ? [ev.items] : []);
+      items.forEach(it => {
+        const name = it.equipment_name || it.equipment_type || it.name || it.type || 'Unknown';
+        const qty = getQty(it);
+        if (!agg[name]) agg[name] = 0;
+        agg[name] += qty;
+      });
+    });
+
+    const list = Object.keys(agg).map(name => ({ name, issued: agg[name] })).sort((a,b) => b.issued - a.issued);
+    return list;
+  }, [recent, usageRange]);
+
+  // Pending students list for the right-hand card
+  const pendingStudentsList = useMemo(() => {
+    // Prefer overview data if present
+    if (overview?.active_equipment?.issues && Array.isArray(overview.active_equipment.issues)) {
+      return overview.active_equipment.issues.map(i => ({
+        student_id: i.student_id || i.student?.student_id,
+        student_name: i.student_name || i.student?.student_name || (i.student && i.student.student_name),
+        outstanding: (i.items || []).reduce((s, it) => {
+          const issued = Number(it?.qty ?? it?.issued_qty ?? 0) || 0;
+          const returned = Number(it?.returned_qty ?? it?.return_qty ?? 0) || 0;
+          return s + (issued - returned);
+        }, 0),
+        items: i.items || [],
+        lastActivity: i.issued_at || i.timestamp || null
+      })).filter(p => p.outstanding > 0).sort((a,b) => b.outstanding - a.outstanding);
+    }
+
+    // Fallback: compute from recent events
+    const map = {};
+    (recent || []).forEach(ev => {
+      const sid = ev.student?.student_id || ev.student_id || '__unknown__';
+      const sname = ev.student?.student_name || ev.student_name || 'Unknown';
+      const action = (ev.action || ev.mode || ev.type || '').toString().toUpperCase();
+      const isIssued = action.includes('ISSUED');
+      const isReturn = action.includes('RETURN');
+      const items = Array.isArray(ev.items) ? ev.items : (ev.items ? [ev.items] : []);
+      if (!map[sid]) map[sid] = { student_id: sid, student_name: sname, issued: 0, returned: 0, lastActivity: ev.issued_at || ev.timestamp };
+      items.forEach(it => {
+        const qty = Number(it?.qty ?? it?.issued_qty ?? it?.quantity ?? it?.count ?? 1) || 0;
+        if (isIssued) map[sid].issued += qty;
+        if (isReturn) map[sid].returned += qty;
+      });
+      // update lastActivity
+      const t = new Date(ev.issued_at || ev.timestamp || Date.now());
+      if (!map[sid].lastActivity || new Date(map[sid].lastActivity) < t) map[sid].lastActivity = t.toISOString();
+    });
+
+    return Object.values(map).map(p => ({ student_id: p.student_id, student_name: p.student_name, outstanding: Math.max(0, p.issued - p.returned), items: [], lastActivity: p.lastActivity })).filter(x => x.outstanding > 0).sort((a,b) => b.outstanding - a.outstanding);
+  }, [overview, recent]);
+
+  // Inline Pie/Donut component
+  const PieDonut = ({ data = [], size = 160, inner = 48 }) => {
+    const total = data.reduce((s, d) => s + (d.issued || 0), 0) || 1;
+    let cumulative = 0;
+
+    const colors = ['#60a5fa','#34d399','#f97316','#f59e0b','#a78bfa','#fb7185','#60f', '#fbbf24'];
+
+    const describeArc = (cx, cy, r, startAngle, endAngle) => {
+      const start = polarToCartesian(cx, cy, r, endAngle);
+      const end = polarToCartesian(cx, cy, r, startAngle);
+      const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+      return [`M ${cx} ${cy}`, `L ${start.x} ${start.y}`, `A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`, 'Z'].join(' ');
+    };
+
+    function polarToCartesian(cx, cy, r, angleInDegrees) {
+      const angleInRadians = (angleInDegrees-90) * Math.PI / 180.0;
+      return { x: cx + (r * Math.cos(angleInRadians)), y: cy + (r * Math.sin(angleInRadians)) };
+    }
+
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {data.map((d, i) => {
+          const value = d.issued || 0;
+          const angle = (value / total) * 360;
+          const start = cumulative;
+          const end = cumulative + angle;
+          cumulative += angle;
+          const path = describeArc(size/2, size/2, size/2 - 6, start, end);
+          return <path key={d.name} d={path} fill={colors[i % colors.length]} opacity={0.95} />;
+        })}
+        {/* inner white circle to create donut */}
+        <circle cx={size/2} cy={size/2} r={inner} fill="#071022" />
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'white', fontSize: 14, fontWeight: 700 }}>
+          {data.slice(0,3).reduce((s,d)=>s+(d.issued||0),0)}/{data.reduce((s,d)=>s+(d.issued||0),0)}
+        </text>
+      </svg>
+    );
+  };
+
   return (
     <div className="sportroom-wrapper">
       <div className="dashboard-wrapper">
@@ -566,7 +677,7 @@ export default function SportRoom() {
                     // compute total item quantity (sum qty/issued_qty/returned_qty) for accurate counts
                     const itemsCount = Array.isArray(r.items)
                       ? r.items.reduce((sum, it) => {
-                          const qty = Number(it?.qty ?? it?.issued_qty ?? it?.returned_qty ?? it?.count ?? 1) || 0;
+                          const qty = Number(it?.qty ?? it?.issued_qty ?? it?.returned_qty ?? r.items?.count) || 0;
                           return sum + qty;
                         }, 0)
                       : (r.items ? (Number(r.items?.qty ?? r.items?.issued_qty ?? r.items?.returned_qty ?? r.items?.count) || 0) : 0);
@@ -631,28 +742,76 @@ export default function SportRoom() {
                   ))}
                 </div>
 
-                {/* MIDDLE: Equipment Usage & Risk Panel */}
-                <div style={{ ...cardStyle, ...mainStyles }}>
-                  <h3 style={{ margin: 0, color: 'white' }}>Equipment Usage & Risk</h3>
-                  <p style={{ marginTop: 6, marginBottom: 12, color: 'rgba(255,255,255,0.65)' }}>Ranked by issued quantity today. Pending indicates items not yet returned.</p>
+                {/* MIDDLE: Two-column area: Usage (left) + Pending Students (right) */}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {/* LEFT: Usage pie */}
+                  <div style={{ flex: 1, ...cardStyle, ...mainStyles }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 style={{ margin: 0, color: 'white' }}>Equipment Usage</h3>
+                        <p style={{ marginTop: 6, marginBottom: 0, color: 'rgba(255,255,255,0.65)' }}>Which equipment is used most. Choose a range.</p>
+                      </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
-                    {(computed.usageList && computed.usageList.length > 0 ? computed.usageList : dummyUsage).map((u, idx) => (
-                        <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: 8, background: 'rgba(0,0,0,0.25)' }}>
-                          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'white' }}>{idx+1}</div>
-                            <div>
-                              <div style={{ fontWeight: 700, color: 'white' }}>{u.name}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{u.issuedToday} issued today • {u.pending} pending</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className={`btn btn--sm ${usageRange === 'day' ? 'active' : ''}`} onClick={() => setUsageRange('day')}>Last day</button>
+                        <button className={`btn btn--sm ${usageRange === 'week' ? 'active' : ''}`} onClick={() => setUsageRange('week')}>Weekly</button>
+                        <button className={`btn btn--sm ${usageRange === 'month' ? 'active' : ''}`} onClick={() => setUsageRange('month')}>Monthly</button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
+                      <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <PieDonut data={(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday })))} size={180} inner={48} />
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        {(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).slice(0,8).map((u, idx) => {
+                          const total = (usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).reduce((s,x)=>s+(x.issued||0),0) || 1;
+                          const pct = Math.round(((u.issued||0) / total) * 100);
+                          return (
+                            <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', borderRadius: 6 }}>
+                              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <div style={{ width: 10, height: 10, borderRadius: 3, background: ['#60a5fa','#34d399','#f97316','#f59e0b','#a78bfa','#fb7185'][idx % 6] }} />
+                                <div style={{ fontWeight: 700, color: 'white' }}>{u.name}</div>
+                              </div>
+
+                              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{u.issued} • {pct}%</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT: Pending Students card */}
+                  <div style={{ width: 360, ...cardStyle, padding: 12 }}>
+                    <h3 style={{ margin: 0 }}>Students with Pending Returns</h3>
+                    
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                      {pendingStudentsList.length === 0 ? (
+                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>No pending returns</div>
+                      ) : (
+                        pendingStudentsList.slice(0, 20).map((s, idx) => (
+                          <div key={s.student_id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                              <div style={{ width: 40, height: 40, borderRadius: 999, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(s.student_name||'?').charAt(0).toUpperCase()}</div>
+                              <div>
+                                <div style={{ fontWeight: 700 }}>{s.student_name}</div>
+                                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ID: {s.student_id} • {s.outstanding} item(s) pending</div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{s.lastActivity ? new Date(s.lastActivity).toLocaleString() : ''}</div>
+                              <div>
+                                <button className="btn btn--sm" onClick={() => setActiveCard({ type: 'RETURN', payload: { student: { student_id: s.student_id, student_name: s.student_name }, items: s.items || [], issue_id: null, issued_at: s.lastActivity } })}>Start Return</button>
+                              </div>
                             </div>
                           </div>
-
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 800, color: 'white' }}>{u.issuedToday}</div>
-                            <div style={{ fontSize: 12, color: u.pending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.6)' }}>{u.pending} pending</div>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
 
