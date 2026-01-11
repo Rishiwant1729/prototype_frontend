@@ -13,9 +13,10 @@ import KPICards from '../components/analytics/KPICards';
 import TimeSeriesChart from '../components/analytics/TimeSeriesChart';
 import RecentEventsTable from '../components/analytics/RecentEventsTable';
 import { getDashboardOverview, getOccupancyTimeSeries } from '../api/dashboard_api';
+import { Building2, BarChart3, RefreshCw, LogOut, Activity } from 'lucide-react';
 
 export default function SportRoom() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const [overview, setOverview] = useState(null);
   const [tsData, setTsData] = useState(null);
   const [equipment, setEquipment] = useState([]);
@@ -590,13 +591,48 @@ export default function SportRoom() {
   return (
     <div className="sportroom-wrapper">
       <div className="dashboard-wrapper">
+        {/* Top Navbar - replaced with main dashboard-style navbar */}
         <nav className="top-navbar">
           <div className="logo">
-            <div className="logo-icon">🏸</div>
+            <div className="logo-icon">
+              <Building2 size={24} strokeWidth={2} />
+            </div>
             <div>
               <div className="logo-text">Sport Room</div>
               <div className="logo-subtitle">Equipment Inventory & Logs</div>
             </div>
+          </div>
+
+          <div className="header-actions">
+            <a href="/" className="header-btn secondary">
+              <Building2 size={16} strokeWidth={2} />
+              <span>Dashboard</span>
+            </a>
+
+            <a href="/analytics" className="header-btn secondary">
+              <BarChart3 size={16} strokeWidth={2} />
+              <span>Analysis</span>
+            </a>
+
+            <a href="/sport-room" className="header-btn secondary">
+              <Activity size={16} strokeWidth={2} />
+              <span>Sport Room</span>
+            </a>
+
+            <button className="header-btn secondary" onClick={() => window.location.reload()}>
+              <RefreshCw size={16} strokeWidth={2} />
+              <span>Refresh</span>
+            </button>
+            <button 
+              className="header-btn primary"
+              onClick={() => {
+                logout && logout();
+                window.location.href = "/login";
+              }}
+            >
+              <LogOut size={16} strokeWidth={2} />
+              <span>Logout</span>
+            </button>
           </div>
         </nav>
 
