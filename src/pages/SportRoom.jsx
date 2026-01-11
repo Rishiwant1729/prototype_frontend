@@ -458,6 +458,24 @@ export default function SportRoom() {
     }
   };
 
+  // New style tokens for main area
+  const mainStyles = {
+    background: 'linear-gradient(180deg, rgba(6,10,15,0.6), rgba(8,14,24,0.55))',
+    padding: 12,
+    borderRadius: 12,
+    color: 'rgba(255,255,255,0.95)'
+  };
+
+  const cardStyle = {
+    background: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    padding: 12,
+    boxShadow: '0 1px 0 rgba(255,255,255,0.02)'
+  };
+
+  const kpiValueStyle = { fontSize: 28, fontWeight: 800, color: '#ffffff' };
+  const kpiLabelStyle = { fontSize: 12, color: 'rgba(255,255,255,0.75)' };
+
   return (
     <div className="sportroom-wrapper">
       <div className="dashboard-wrapper">
@@ -544,7 +562,14 @@ export default function SportRoom() {
                     const studentObj = r.student || { student_name: r.student_name || 'Unknown', student_id: r.student_id || r.student?.student_id || '—' };
                     const action = r.action || r.mode || r.status || (r.returned ? 'RETURNED' : (r.items ? 'ISSUED' : 'UNKNOWN'));
                     const timeStr = new Date(r.issued_at || r.timestamp || Date.now()).toLocaleString();
-                    const itemsCount = Array.isArray(r.items) ? r.items.length : (r.items ? (r.items.length || 0) : 0);
+
+                    // compute total item quantity (sum qty/issued_qty/returned_qty) for accurate counts
+                    const itemsCount = Array.isArray(r.items)
+                      ? r.items.reduce((sum, it) => {
+                          const qty = Number(it?.qty ?? it?.issued_qty ?? it?.returned_qty ?? it?.count ?? 1) || 0;
+                          return sum + qty;
+                        }, 0)
+                      : (r.items ? (Number(r.items?.qty ?? r.items?.issued_qty ?? r.items?.returned_qty ?? r.items?.count) || 0) : 0);
 
                     return (
                       <div key={i} className="recent-row">
@@ -583,21 +608,23 @@ export default function SportRoom() {
             ) : (
               <>
                 {/* TOP: KPI Statistic Cards (4-6) */}
-                <div className="kpi-grid">
+                <div className="kpi-grid" style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
                   {[
-                    { id: 'studentsInside', label: 'Students Inside', value: computed.studentsInside, color: 'primary' },
-                    { id: 'activeIssues', label: 'Active Equipment Issues', value: computed.activeEquipmentIssues, color: 'warning' },
-                    { id: 'studentsPending', label: 'Students with Pending Returns', value: computed.studentsWithPending, color: computed.studentsWithPending > 0 ? 'warning' : 'muted' },
-                    { id: 'issuedToday', label: 'Equipment Issued Today', value: computed.issuedTodayCount, color: 'success' },
-                    { id: 'avgSession', label: 'Avg Session Time', value: computed.avgSession || '—', color: 'muted' }
+                    { id: 'studentsInside', label: 'Students Inside', value: computed.studentsInside, color: '#60a5fa' },
+                    { id: 'activeIssues', label: 'Active Equipment Issues', value: computed.activeEquipmentIssues, color: '#f97316' },
+                    { id: 'studentsPending', label: 'Students with Pending Returns', value: computed.studentsWithPending, color: computed.studentsWithPending > 0 ? '#f59e0b' : '#94a3b8' },
+                    { id: 'issuedToday', label: 'Equipment Issued Today', value: computed.issuedTodayCount, color: '#34d399' },
+                    { id: 'avgSession', label: 'Avg Session Time', value: computed.avgSession || '—', color: '#94a3b8' }
                   ].map(kpi => (
-                    <article key={kpi.id} className={`kpi-card kpi-card--${kpi.color}`} style={{ minWidth: 180 }}>
-                      <header className="kpi-card__header">
-                        <span className="kpi-card__label">{kpi.label}</span>
-                      </header>
-                      <div className="kpi-card__body">
-                        <div className="kpi-card__value-row">
-                          <span className="kpi-card__value">{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</span>
+                    <article key={kpi.id} style={{ ...cardStyle, minWidth: 170, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={kpiValueStyle}>{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</div>
+                          <div style={kpiLabelStyle}>{kpi.label}</div>
+                        </div>
+
+                        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: 12, height: 12, borderRadius: 6, background: kpi.color }} />
                         </div>
                       </div>
                     </article>
@@ -605,23 +632,23 @@ export default function SportRoom() {
                 </div>
 
                 {/* MIDDLE: Equipment Usage & Risk Panel */}
-                <div className="card" style={{ padding: 12 }}>
-                  <h3 style={{ margin: 0 }}>Equipment Usage & Risk</h3>
-                  <p style={{ marginTop: 6, marginBottom: 12, color: 'rgba(255,255,255,0.6)' }}>Ranked by issued quantity today. Pending indicates items not yet returned.</p>
+                <div style={{ ...cardStyle, ...mainStyles }}>
+                  <h3 style={{ margin: 0, color: 'white' }}>Equipment Usage & Risk</h3>
+                  <p style={{ marginTop: 6, marginBottom: 12, color: 'rgba(255,255,255,0.65)' }}>Ranked by issued quantity today. Pending indicates items not yet returned.</p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
                     {(computed.usageList && computed.usageList.length > 0 ? computed.usageList : dummyUsage).map((u, idx) => (
-                        <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', borderRadius: 6, background: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{idx+1}</div>
+                        <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: 8, background: 'rgba(0,0,0,0.25)' }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'white' }}>{idx+1}</div>
                             <div>
-                              <div style={{ fontWeight: 700 }}>{u.name}</div>
+                              <div style={{ fontWeight: 700, color: 'white' }}>{u.name}</div>
                               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{u.issuedToday} issued today • {u.pending} pending</div>
                             </div>
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 700 }}>{u.issuedToday}</div>
+                            <div style={{ fontWeight: 800, color: 'white' }}>{u.issuedToday}</div>
                             <div style={{ fontSize: 12, color: u.pending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.6)' }}>{u.pending} pending</div>
                           </div>
                         </div>
@@ -630,19 +657,13 @@ export default function SportRoom() {
                 </div>
 
                 {/* BOTTOM: Live Activity Feed (use analytics RecentEventsTable) */}
-                <div className="card" style={{ padding: 12 }}>
-                  <h3 style={{ margin: 0 }}>Live Activity Feed</h3>
-                  <p style={{ marginTop: 6, marginBottom: 6, color: 'rgba(255,255,255,0.6)' }}>Real-time events for entries, exits, issues and returns. Use filters and search as in Analytics.</p>
+                <div style={{ ...cardStyle, background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))' }}>
+                  <h3 style={{ margin: 0, color: 'white' }}>Live Activity Feed</h3>
+                  
 
                   <div style={{ marginTop: 8 }}>
                     <RecentEventsTable events={eventsForTable} compact={false} />
                   </div>
-                </div>
-
-                {/* Keep existing charts below for context */}
-                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                  {tsData && <div className="card" style={{ flex: 1 }}><TimeSeriesChart data={tsData} /></div>}
-                  <div className="card" style={{ flex: 1 }}><EquipmentBarChart equipment={equipment} /></div>
                 </div>
               </>
             )}
