@@ -265,27 +265,52 @@ export default function SportRoom() {
     try {
       if (!scan || scan.facility !== 'SPORTS_ROOM') return;
 
-      // Handle explicit issue/return emitted after server operations
+      // Immediately surface an active card for issue/return scans to remove UI lag
+      const mode = (scan.mode || scan.action || scan.status || '').toString().toUpperCase();
+
+      if (mode === 'ISSUE' || mode === 'EQUIPMENT_ISSUED' || mode === 'ISSUED') {
+        setActiveCard({
+          type: 'ISSUE',
+          payload: {
+            student: scan.student || { student_id: scan.student_id, student_name: scan.student_name },
+            available_equipment: scan.available_equipment || equipment
+          }
+        });
+      } else if (mode === 'RETURN' || mode === 'EQUIPMENT_RETURNED' || mode === 'RETURNED' || mode === 'PARTIAL_RETURN') {
+        setActiveCard({
+          type: 'RETURN',
+          payload: {
+            student: scan.student || { student_id: scan.student_id, student_name: scan.student_name },
+            issue_id: scan.issue_id || scan.issueId,
+            items: scan.items || [],
+            issued_at: scan.issued_at || scan.timestamp
+          }
+        });
+      } else if (mode === 'BLOCKED') {
+        setActiveCard({ type: 'ERROR', payload: { message: scan.reason || 'Blocked' } });
+      } else if (mode === 'REJECTED') {
+        setActiveCard({ type: 'UNREGISTERED', payload: { uid: scan.uid } });
+      }
+
+      // Handle explicit issue/return emitted after server operations (update equipment quantities)
       if (scan.action === 'EQUIPMENT_ISSUED' || scan.action === 'ISSUED') {
-        // items likely have equipment_id and qty
-        const deltas = (scan.items || []).map(it => ({ equipment_id: it.equipment_id || it.equipment_id, qty_delta: -Math.abs(it.qty || it.qty || it.issued_qty || 0) }));
+        const deltas = (scan.items || []).map(it => ({ equipment_id: it.equipment_id || it.id || null, qty_delta: -Math.abs(it.qty ?? it.issued_qty ?? 0) }));
         applyEquipmentDelta(deltas);
       }
 
       if (scan.action === 'EQUIPMENT_RETURNED' || scan.action === 'EQUIPMENT_PARTIAL_RETURN' || scan.action === 'RETURNED' || scan.action === 'PARTIAL_RETURN') {
-        // returned items may include equipment_type and returned_qty
-        const deltas = (scan.items || []).map(it => ({ equipment_type: it.equipment_type || it.equipment_type, qty_delta: Math.abs(it.returned_qty || it.return_qty || it.qty || 0) }));
+        const deltas = (scan.items || []).map(it => ({ equipment_type: it.equipment_type || it.type || null, qty_delta: Math.abs(it.returned_qty ?? it.return_qty ?? it.qty ?? 0) }));
         applyEquipmentDelta(deltas);
       }
 
-      // Also append normalized recent log for UI
+      // Also append normalized recent log for UI (keep newest first)
       try {
         const normalized = {
           student: scan.student || { student_id: scan.student_id || scan.student?.student_id, student_name: scan.student_name || scan.student?.student_name },
           student_name: scan.student?.student_name || scan.student_name || (scan.student && scan.student.student_name),
           student_id: scan.student?.student_id || scan.student_id,
           action: scan.action || scan.mode || scan.status,
-          items: scan.items || scan.items || [],
+          items: Array.isArray(scan.items) ? scan.items : (scan.items ? [scan.items] : []),
           issue_id: scan.issue_id || scan.issueId,
           issued_at: scan.issued_at || scan.timestamp || new Date().toISOString()
         };
