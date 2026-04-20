@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { 
-  Building2, 
-  Calendar, 
-  Clock, 
+import {
+  Calendar,
+  Clock,
   RefreshCw,
   ChevronDown
 } from "lucide-react";
@@ -14,10 +13,8 @@ import { formatDateISO } from "../../api/dashboard_api";
  * Uses consistent button styles and spacing
  */
 export default function FiltersBar({
-  facility,
   dateRange,
   granularity,
-  onFacilityChange,
   onDateRangeChange,
   onGranularityChange,
   onPeriodSelect,
@@ -26,14 +23,6 @@ export default function FiltersBar({
   const [showCustomDates, setShowCustomDates] = useState(false);
   const [customStart, setCustomStart] = useState(dateRange.startDate);
   const [customEnd, setCustomEnd] = useState(dateRange.endDate);
-
-  const facilities = [
-    { value: "ALL", label: "All Facilities", icon: Building2 },
-    { value: "GYM", label: "Gymnasium" },
-    { value: "SWIMMING", label: "Swimming Pool" },
-    { value: "BADMINTON", label: "Badminton Court" },
-    { value: "SPORTS_ROOM", label: "Sports Room" }
-  ];
 
   const periods = [
     { value: "today", label: "Today" },
@@ -70,28 +59,6 @@ export default function FiltersBar({
   return (
     <div className="filters-bar">
       <div className="filters-bar__left">
-        {/* Facility Selector */}
-        <div className="filter-group">
-          <label className="filter-group__label">
-            <Building2 size={14} />
-            <span>Facility</span>
-          </label>
-          <div className="select-wrapper">
-            <select
-              value={facility}
-              onChange={(e) => onFacilityChange(e.target.value)}
-              className="filter-select"
-            >
-              {facilities.map(f => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="select-icon" />
-          </div>
-        </div>
-
         {/* Period Selector */}
         <div className="filter-group">
           <label className="filter-group__label">

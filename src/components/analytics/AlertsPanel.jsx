@@ -10,8 +10,28 @@ import {
   ChevronRight,
   AlertCircle
 } from "lucide-react";
+import { ListSkeleton, SkeletonBlock } from "../common/Skeleton";
 
-export default function AlertsPanel({ alerts, compact = false }) {
+export default function AlertsPanel({ alerts, compact = false, loading = false }) {
+  if (loading) {
+    return (
+      <div className={`alerts-panel ${compact ? "alerts-panel--compact" : ""}`} aria-busy="true">
+        <div className="alerts-panel__section">
+          <div className="alerts-panel__section-header" aria-hidden="true">
+            <SkeletonBlock width={28} height={28} radius={10} />
+            <div style={{ flex: 1 }}>
+              <SkeletonBlock width="55%" height={12} radius="pill" />
+              <SkeletonBlock width="40%" height={10} radius="pill" style={{ marginTop: 8 }} />
+            </div>
+          </div>
+          <div className="alerts-panel__list">
+            <ListSkeleton rows={compact ? 3 : 5} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!alerts) {
     return (
       <div className="alerts-panel__empty">

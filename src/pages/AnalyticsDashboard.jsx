@@ -2,41 +2,129 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import useDashboardUpdates from "../hooks/useDashboardUpdates";
 import KPICards from "../components/analytics/KPICards";
+import FootfallKpiStrip from "../components/analytics/FootfallKpiStrip";
 import TimeSeriesChart from "../components/analytics/TimeSeriesChart";
-import HourlyDistributionChart from "../components/analytics/HourlyDistributionChart";
-import HeatmapCalendar from "../components/analytics/HeatmapCalendar";
+import EntryExitGroupedBar from "../components/analytics/EntryExitGroupedBar";
+import FacilityShareDonut from "../components/analytics/FacilityShareDonut";
+import BusyTimeSlotsPanel from "../components/analytics/BusyTimeSlotsPanel";
 import RecentEventsTable from "../components/analytics/RecentEventsTable";
 import AlertsPanel from "../components/analytics/AlertsPanel";
 import FiltersBar from "../components/analytics/FiltersBar";
 import ExportPanel from "../components/analytics/ExportPanel";
+import FacilityOccupancyPanels from "../components/analytics/FacilityOccupancyPanels";
 import {
   getDashboardOverview,
   getOccupancyTimeSeries,
   getHourlyDistribution,
-  getHeatmapData,
   getRecentEvents,
   getAllAlerts,
+  getFootfallAnalyticsSummary,
   getDateRange
 } from "../api/dashboard_api";
 import {
-  BarChart3,
   LineChart,
   ClipboardList,
   AlertTriangle,
-  Building2,
-  RefreshCw,
-  LogOut,
   TrendingUp,
   Clock,
-  CalendarDays,
   Bell,
   Activity,
   Loader2
 } from "lucide-react";
+import AppShell from "../components/layout/AppShell";
+import "../styles/dashboard.css";
 import "../styles/analytics.css";
+import {
+  StatCardSkeleton,
+  ChartCardSkeleton,
+  TableSkeleton,
+  ListSkeleton,
+  SkeletonBlock
+} from "../components/common/Skeleton";
+
+const ENTRY_EXIT_FACILITY_IDS = ["GYM", "BADMINTON", "SWIMMING"];
+
+function AnalyticsDashboardSkeleton() {
+  return (
+    <div className="analytics-two-column" aria-busy="true">
+      <aside className="analysis-sidebar">
+        <div className="sidebar-card">
+          <h3 className="sidebar-card__title">Facility Selector</h3>
+          <p className="sidebar-card__subtitle">Entry/Exit Facilities</p>
+          <div className="facility-list" aria-hidden="true">
+            <SkeletonBlock width="100%" height={36} radius="pill" />
+            <SkeletonBlock width="100%" height={36} radius="pill" style={{ marginTop: 10 }} />
+            <SkeletonBlock width="100%" height={36} radius="pill" style={{ marginTop: 10 }} />
+            <SkeletonBlock width="100%" height={36} radius="pill" style={{ marginTop: 10 }} />
+          </div>
+        </div>
+
+        <div className="sidebar-card">
+          <h3 className="sidebar-card__title">Recent ENTRY</h3>
+          <p className="sidebar-card__subtitle">Showing ENTRY events</p>
+          <ListSkeleton rows={6} />
+        </div>
+
+        <div className="sidebar-card">
+          <h3 className="sidebar-card__title">Recent EXIT</h3>
+          <p className="sidebar-card__subtitle">Showing EXIT events</p>
+          <ListSkeleton rows={6} />
+        </div>
+      </aside>
+
+      <main className="analysis-main">
+        <section className="footfall-kpi-strip" aria-label="Footfall summary loading" aria-hidden="true">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </section>
+
+        <ChartCardSkeleton height={260} />
+        <ChartCardSkeleton height={220} style={{ marginTop: 16 }} />
+
+        <div className="analytics-overview-grid analytics-overview-grid--insights" style={{ marginTop: 16 }}>
+          <ChartCardSkeleton height={160} />
+          <ChartCardSkeleton height={160} />
+        </div>
+
+        <div className="chart-card chart-card--full-block" style={{ marginTop: 16 }} aria-hidden="true">
+          <h3>
+            <span>Recent entry / exit log</span>
+          </h3>
+          <TableSkeleton rows={8} cols={5} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/** User-facing message when the overview request fails (not 403). */
+function describeDashboardFetchError(err) {
+  if (!err?.response) {
+    const isNetwork =
+      err?.code === "ERR_NETWORK" ||
+      err?.code === "ECONNREFUSED" ||
+      String(err?.message || "").toLowerCase().includes("network");
+    if (isNetwork) {
+      return "Cannot reach the API server. The analytics app calls http://localhost:3000/api — start the backend from the `backend` folder (for example `npm run dev`) and keep it on port 3000, then use Retry.";
+    }
+    return err?.message
+      ? `Cannot load dashboard data: ${err.message}`
+      : "Cannot load dashboard data. Check that the backend is running and reachable.";
+  }
+  const status = err.response.status;
+  if (status === 401) return "Session expired. Please sign in again.";
+  if (status >= 500) {
+    return "Server error while loading the dashboard. Check the backend terminal for the stack trace.";
+  }
+  if (status === 404) {
+    return "Dashboard API returned 404. Restart the backend after pulling the latest code so routes such as /api/dashboard are registered.";
+  }
+  return `Failed to load dashboard data (HTTP ${status}).`;
+}
 
 export default function AnalyticsDashboard() {
-  const { logout, permissions, role, userName } = useAuth();
+  const { permissions, role } = useAuth();
   
   // Filter state
   const [facility, setFacility] = useState("ALL");
@@ -48,13 +136,15 @@ export default function AnalyticsDashboard() {
   const [overview, setOverview] = useState(null);
   const [timeSeriesData, setTimeSeriesData] = useState(null);
   const [hourlyData, setHourlyData] = useState(null);
-  const [heatmapData, setHeatmapData] = useState(null);
   const [recentEvents, setRecentEvents] = useState([]);
   const [alerts, setAlerts] = useState(null);
+  const [footfallSummary, setFootfallSummary] = useState(null);
   
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  /** Non-fatal: overview loaded but one or more secondary requests failed */
+  const [dataLoadWarning, setDataLoadWarning] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   // Set default tab based on role
   const [activeTab, setActiveTab] = useState(() => {
@@ -70,11 +160,26 @@ export default function AnalyticsDashboard() {
     setLiveIndicator(true);
     setTimeout(() => setLiveIndicator(false), 1000);
 
+    const overviewParams = (f) => (f === "ALL" ? { scope: "entry_exit" } : {});
+
     // For scan events, add to recent events and refresh overview
     if (data.type === "SCAN_EVENT") {
       const payload = data.payload;
-      
-      // Add to recent events
+      const fid = payload.facility;
+      const act = String(payload.action || "").toUpperCase();
+      const isSportRoomOrEquipment =
+        fid === "SPORTS_ROOM" ||
+        ["ISSUED", "ISSUE", "RETURNED", "RETURN"].includes(act);
+
+      // Analytics dashboard omits sport room / equipment from streams and KPIs when scoped to ALL gates
+      if (isSportRoomOrEquipment) {
+        getDashboardOverview(overviewParams(facility)).then((res) => {
+          setOverview(res.data);
+          setLastUpdated(new Date());
+        }).catch(console.error);
+        return;
+      }
+
       const newEvent = {
         type: payload.action || (payload.mode === "ISSUE" ? "EQUIPMENT_ISSUE" : payload.mode === "RETURN" ? "EQUIPMENT_RETURN" : payload.action),
         timestamp: new Date().toISOString(),
@@ -84,36 +189,38 @@ export default function AnalyticsDashboard() {
         details: payload.items ? { items: payload.items } : null
       };
 
-      setRecentEvents(prev => [newEvent, ...prev.slice(0, 99)]);
-      
-      // Refresh overview for updated occupancy
-      getDashboardOverview().then(res => {
+      setRecentEvents((prev) => [newEvent, ...prev.slice(0, 99)]);
+
+      getDashboardOverview(overviewParams(facility)).then((res) => {
         setOverview(res.data);
         setLastUpdated(new Date());
       }).catch(console.error);
     }
-  }, []);
+  }, [facility]);
 
   // Connect to WebSocket for real-time updates
-  const { isConnected } = useDashboardUpdates(handleRealtimeUpdate);
+  useDashboardUpdates(handleRealtimeUpdate);
 
   // Fetch all data (respecting role permissions)
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setDataLoadWarning(null);
 
       const { startDate, endDate } = dateRange;
 
+      const overviewParams = facility === "ALL" ? { scope: "entry_exit" } : {};
+
       // Build promises based on role permissions
-      const promises = [getDashboardOverview()];
+      const promises = [getDashboardOverview(overviewParams)];
 
       // Only fetch charts data if user has permission
       if (permissions?.canViewCharts) {
         promises.push(
           getOccupancyTimeSeries(facility, startDate, endDate, granularity),
           getHourlyDistribution(facility, startDate, endDate),
-          getHeatmapData(facility, startDate, endDate)
+          getFootfallAnalyticsSummary(facility, startDate, endDate)
         );
       } else {
         promises.push(Promise.resolve({ data: null }));
@@ -123,41 +230,79 @@ export default function AnalyticsDashboard() {
 
       // Only fetch events if user has permission
       if (permissions?.canViewEvents) {
-        promises.push(getRecentEvents(100, facility === "ALL" ? null : facility));
+        promises.push(getRecentEvents(100, facility === "ALL" ? "ALL" : facility));
       } else {
         promises.push(Promise.resolve({ data: [] }));
       }
 
       // Only fetch alerts if user has permission
       if (permissions?.canViewAlerts) {
-        promises.push(getAllAlerts());
+        promises.push(getAllAlerts(facility === "ALL" ? { scope: "entry_exit" } : {}));
       } else {
         promises.push(Promise.resolve({ data: { total_alerts: 0 } }));
       }
 
-      const [
-        overviewRes,
-        timeSeriesRes,
-        hourlyRes,
-        heatmapRes,
-        eventsRes,
-        alertsRes
-      ] = await Promise.all(promises);
+      const settled = await Promise.allSettled(promises);
 
-      setOverview(overviewRes.data);
-      setTimeSeriesData(timeSeriesRes.data);
-      setHourlyData(hourlyRes.data);
-      setHeatmapData(heatmapRes.data);
-      setRecentEvents(eventsRes.data || []);
-      setAlerts(alertsRes.data);
+      const overviewOutcome = settled[0];
+      if (overviewOutcome.status === "rejected") {
+        const err = overviewOutcome.reason;
+        if (err?.response?.status === 403) {
+          console.log("Overview restricted by role");
+          setOverview(null);
+        } else {
+          console.error("Dashboard overview fetch error:", err);
+          setError(describeDashboardFetchError(err));
+        }
+        return;
+      }
+
+      setOverview(overviewOutcome.value.data);
+
+      const takeChartData = (idx, setter, label) => {
+        const out = settled[idx];
+        if (out.status === "fulfilled") {
+          setter(out.value?.data ?? null);
+          return false;
+        }
+        const err = out.reason;
+        if (err?.response?.status === 403) {
+          console.log(`${label} restricted by role`);
+          setter(null);
+          return false;
+        }
+        console.error(`${label} fetch error:`, err);
+        setter(null);
+        return true;
+      };
+
+      let anySecondaryFailed = false;
+      anySecondaryFailed =
+        anySecondaryFailed || takeChartData(1, setTimeSeriesData, "Time series");
+      anySecondaryFailed =
+        anySecondaryFailed || takeChartData(2, setHourlyData, "Hourly distribution");
+      anySecondaryFailed =
+        anySecondaryFailed || takeChartData(3, setFootfallSummary, "Footfall summary");
+      anySecondaryFailed =
+        anySecondaryFailed ||
+        takeChartData(4, (d) => setRecentEvents(d || []), "Recent events");
+      anySecondaryFailed =
+        anySecondaryFailed ||
+        takeChartData(5, (d) => setAlerts(d || { total_alerts: 0 }), "Alerts");
+
+      if (anySecondaryFailed) {
+        setDataLoadWarning(
+          "Some dashboard sections failed to load. Charts or tables may be empty until the server responds; use Retry or check backend logs."
+        );
+      }
+
       setLastUpdated(new Date());
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      // Don't show error for permission denied - just show limited data
       if (err.response?.status === 403) {
         console.log("Some data restricted by role");
       } else {
-        setError("Failed to load dashboard data");
+        setError(describeDashboardFetchError(err));
       }
     } finally {
       setLoading(false);
@@ -175,10 +320,6 @@ export default function AnalyticsDashboard() {
   }, [fetchData, refreshInterval]);
 
   // Handle filter changes
-  const handleFacilityChange = (newFacility) => {
-    setFacility(newFacility);
-  };
-
   const handleDateRangeChange = (newRange) => {
     setDateRange(newRange);
   };
@@ -191,13 +332,22 @@ export default function AnalyticsDashboard() {
     setDateRange(getDateRange(period));
   };
 
-  // Derived event lists for sidebar
-  const entryEvents = recentEvents.filter(e => e.type === 'ENTRY' || e.type === 'ENTRY' || e.action === 'ENTRY');
-  const exitEvents = recentEvents.filter(e => e.type === 'EXIT' || e.type === 'EXIT' || e.action === 'EXIT');
+  // Derived event lists for sidebar (entry/exit gates only; never sport room)
+  const entryEvents = recentEvents.filter(
+    (e) =>
+      (e.type === "ENTRY" || e.action === "ENTRY") &&
+      ENTRY_EXIT_FACILITY_IDS.includes(e.facility_id)
+  );
+  const exitEvents = recentEvents.filter(
+    (e) =>
+      (e.type === "EXIT" || e.action === "EXIT") &&
+      ENTRY_EXIT_FACILITY_IDS.includes(e.facility_id)
+  );
 
-  // Filtered lists based on selected facility
-  const filteredEntries = facility === 'ALL' ? entryEvents : entryEvents.filter(e => e.facility_id === facility);
-  const filteredExits = facility === 'ALL' ? exitEvents : exitEvents.filter(e => e.facility_id === facility);
+  const filteredEntries =
+    facility === "ALL" ? entryEvents : entryEvents.filter((e) => e.facility_id === facility);
+  const filteredExits =
+    facility === "ALL" ? exitEvents : exitEvents.filter((e) => e.facility_id === facility);
 
   // Helper to display facility friendly name
   const getFacilityName = (id) => {
@@ -218,124 +368,89 @@ export default function AnalyticsDashboard() {
     { id: 'SWIMMING', label: 'Swimming Pool' }
   ];
 
-  return (
-    <div className="analytics-wrapper">
-      {/* Top Navbar */}
-      <nav className="analytics-navbar">
-        <div className="analytics-logo">
-          <div className="logo-icon">
-            <BarChart3 size={24} strokeWidth={2} />
-          </div>
-          <div>
-            <div className="logo-text">Analytics Dashboard</div>
-            <div className="logo-subtitle">
-              {userName && <span className="user-name">{userName} • </span>}
-              {role && <span className="user-role">{role}</span>}
-            </div>
-          </div>
-        </div>
+  const analyticsTabs = (
+    <div className="analytics-app-shell-tabs">
+      <div className="nav-tabs">
+        <button
+          type="button"
+          className={`nav-tab ${activeTab === "overview" ? "active" : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          <TrendingUp size={16} strokeWidth={2} />
+          <span>Overview</span>
+        </button>
 
-        <div className="nav-tabs">
-          {/* Overview tab - visible to all */}
+        {permissions?.canViewCharts && (
           <button
-            className={`nav-tab ${activeTab === "overview" ? "active" : ""}`}
-            onClick={() => setActiveTab("overview")}
+            type="button"
+            className={`nav-tab ${activeTab === "charts" ? "active" : ""}`}
+            onClick={() => setActiveTab("charts")}
           >
-            <TrendingUp size={16} strokeWidth={2} />
-            <span>Overview</span>
+            <LineChart size={16} strokeWidth={2} />
+            <span>Charts</span>
           </button>
-          
-          {/* Charts tab - only for MANAGEMENT */}
-          {permissions?.canViewCharts && (
-            <button
-              className={`nav-tab ${activeTab === "charts" ? "active" : ""}`}
-              onClick={() => setActiveTab("charts")}
-            >
-              <LineChart size={16} strokeWidth={2} />
-              <span>Charts</span>
-            </button>
-          )}
-          
-          {/* Events tab - for all except GUARD */}
-          {permissions?.canViewEvents && (
-            <button
-              className={`nav-tab ${activeTab === "events" ? "active" : ""}`}
-              onClick={() => setActiveTab("events")}
-            >
-              <ClipboardList size={16} strokeWidth={2} />
-              <span>Events</span>
-            </button>
-          )}
-          
-          {/* Alerts tab - for all except GUARD */}
-          {permissions?.canViewAlerts && (
-            <button
-              className={`nav-tab ${activeTab === "alerts" ? "active" : ""}`}
-              onClick={() => setActiveTab("alerts")}
-            >
-              <AlertTriangle size={16} strokeWidth={2} />
-              <span>Alerts</span>
-              {alerts?.total_alerts > 0 && (
-                <span className="alert-badge">{alerts.total_alerts}</span>
-              )}
-            </button>
-          )}
-        </div>
+        )}
 
-        <div className="header-actions">
-          {/* Live Indicator */}
-          <div className={`live-indicator ${liveIndicator ? "pulse" : ""}`}>
-            <span className="live-dot"></span>
-            <span>LIVE</span>
-          </div>
-
-          <a href="/" className="header-btn secondary">
-            <Building2 size={16} strokeWidth={2} />
-            <span>Dashboard</span>
-          </a>
-
-          <a href="/sport-room" className="header-btn secondary">
-            <Activity size={16} strokeWidth={2} />
-            <span>Sport Room</span>
-          </a>
-
-          <button className="header-btn secondary" onClick={fetchData}>
-            <RefreshCw size={16} strokeWidth={2} />
-            <span>Refresh</span>
-          </button>
-          <button 
-            className="header-btn primary"
-            onClick={() => {
-              logout();
-              window.location.href = "/login";
-            }}
+        {permissions?.canViewEvents && (
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === "events" ? "active" : ""}`}
+            onClick={() => setActiveTab("events")}
           >
-            <LogOut size={16} strokeWidth={2} />
-            <span>Logout</span>
+            <ClipboardList size={16} strokeWidth={2} />
+            <span>Events</span>
           </button>
-        </div>
-      </nav>
+        )}
 
+        {permissions?.canViewAlerts && (
+          <button
+            type="button"
+            className={`nav-tab ${activeTab === "alerts" ? "active" : ""}`}
+            onClick={() => setActiveTab("alerts")}
+          >
+            <AlertTriangle size={16} strokeWidth={2} />
+            <span>Alerts</span>
+            {alerts?.total_alerts > 0 && (
+              <span className="alert-badge">{alerts.total_alerts}</span>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <AppShell
+      pageEmphasis="Analytics"
+      headerLeft={analyticsTabs}
+      headerExtras={
+        <div className={`live-indicator ${liveIndicator ? "pulse" : ""}`}>
+          <span className="live-dot" />
+          <span>LIVE</span>
+        </div>
+      }
+      onRefresh={fetchData}
+    >
+      <div className="analytics-wrapper analytics-wrapper--shell">
       {/* Filters Bar */}
       <FiltersBar
-        facility={facility}
         dateRange={dateRange}
         granularity={granularity}
-        onFacilityChange={handleFacilityChange}
         onDateRangeChange={handleDateRangeChange}
         onGranularityChange={handleGranularityChange}
         onPeriodSelect={handlePeriodSelect}
         lastUpdated={lastUpdated}
       />
 
+      {dataLoadWarning && (
+        <div className="analytics-fetch-warning" role="status">
+          {dataLoadWarning}
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="analytics-content">
-        {loading && !overview ? (
-          <div className="loading-overlay">
-            <Loader2 size={48} className="spinner large" />
-            <p>Loading dashboard data...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="error-overlay">
             <div className="error-icon">
               <AlertTriangle size={48} strokeWidth={1.5} />
@@ -343,6 +458,8 @@ export default function AnalyticsDashboard() {
             <p>{error}</p>
             <button onClick={fetchData}>Retry</button>
           </div>
+        ) : loading && !overview ? (
+          <AnalyticsDashboardSkeleton />
         ) : (
           <div className="analytics-two-column">
             {/* LEFT SIDEBAR - Facility selector and recent events (ENTRY/EXIT) */}
@@ -405,30 +522,64 @@ export default function AnalyticsDashboard() {
               {/* Overview Tab */}
               {activeTab === "overview" && (
                 <div className="tab-content overview-tab">
-                  {/* KPI Cards */}
-                  <KPICards overview={overview} dateRange={dateRange} />
+                  {permissions?.canViewCharts ? (
+                    <>
+                      {loading && overview && !footfallSummary ? (
+                        <section className="footfall-kpi-strip" aria-label="Footfall summary loading" aria-busy="true">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <StatCardSkeleton key={i} />
+                          ))}
+                        </section>
+                      ) : (
+                        <FootfallKpiStrip summary={footfallSummary} dateRange={dateRange} />
+                      )}
 
-                  {/* Quick Charts Row - only for MANAGEMENT */}
-                  {permissions?.canViewCharts && (
-                    <div className="charts-row">
-                      <div className="chart-card half">
+                      <div className="chart-card chart-card--full-block">
                         <h3>
                           <TrendingUp size={18} strokeWidth={2} />
-                          <span>Entries & Exits Trend</span>
+                          <span>Footfall trend</span>
                         </h3>
-                        <TimeSeriesChart data={timeSeriesData} compact />
+                        <p className="chart-card__scope-note">
+                          {facility === "ALL"
+                            ? "Separate lines for each entry/exit gate (Gym, Badminton, Pool). Sport room is not included. Points are slightly larger at the peak aggregate entry period."
+                            : `Entries (green) and exits (coral) for ${getFacilityName(facility)} only — other gates are hidden.`}
+                        </p>
+                        <TimeSeriesChart data={timeSeriesData} loading={loading && overview && !timeSeriesData} showPeakMarker />
                       </div>
-                      <div className="chart-card half">
+
+                      <div className="chart-card chart-card--full-block">
                         <h3>
-                          <Clock size={18} strokeWidth={2} />
-                          <span>Peak Hours</span>
+                          <TrendingUp size={18} strokeWidth={2} />
+                          <span>Entry vs exit by period</span>
                         </h3>
-                        <HourlyDistributionChart data={hourlyData} compact />
+                        <p className="chart-card__scope-note">Grouped comparison per time bucket.</p>
+                        <EntryExitGroupedBar data={timeSeriesData} loading={loading && overview && !timeSeriesData} />
                       </div>
-                    </div>
+
+                      <div className="analytics-overview-grid analytics-overview-grid--insights">
+                        <div className="chart-card">
+                          <h3>
+                            <Activity size={18} strokeWidth={2} />
+                            <span>Facility usage (entries)</span>
+                          </h3>
+                          <FacilityShareDonut
+                            facilityShare={footfallSummary?.facility_share || []}
+                            loading={loading && overview && !footfallSummary}
+                          />
+                        </div>
+                        <div className="chart-card">
+                          <h3>
+                            <Clock size={18} strokeWidth={2} />
+                            <span>Top busy time slots</span>
+                          </h3>
+                          <BusyTimeSlotsPanel hourlyData={hourlyData} loading={loading && overview && !hourlyData} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <KPICards overview={overview} dateRange={dateRange} omitEquipmentKpi />
                   )}
 
-                  {/* Alerts Preview - for all except GUARD */}
                   {permissions?.canViewAlerts && alerts && alerts.total_alerts > 0 && (
                     <div className="alerts-preview">
                       <h3>
@@ -439,16 +590,23 @@ export default function AnalyticsDashboard() {
                     </div>
                   )}
 
-                  {/* Recent Events Preview - for all except GUARD */}
                   {permissions?.canViewEvents && (
                     <div className="events-preview">
                       <h3>
                         <Activity size={18} strokeWidth={2} />
-                        <span>Recent Activity</span>
+                        <span>Recent entry / exit log</span>
                       </h3>
-                      <RecentEventsTable events={recentEvents
-                  .filter(ev => ['ENTRY','EXIT'].includes(ev.type) && ev.facility_id !== 'SPORTS_ROOM')
-                  .slice(0, 10)} compact />
+                      <RecentEventsTable
+                        events={recentEvents
+                          .filter(
+                            (ev) =>
+                              ["ENTRY", "EXIT"].includes(ev.type) && ev.facility_id !== "SPORTS_ROOM"
+                          )
+                          .slice(0, 12)}
+                        compact
+                        layout="footfall"
+                        loading={loading && overview && recentEvents.length === 0}
+                      />
                     </div>
                   )}
                 </div>
@@ -457,29 +615,19 @@ export default function AnalyticsDashboard() {
               {/* Charts Tab - only for MANAGEMENT */}
               {activeTab === "charts" && permissions?.canViewCharts && (
                 <div className="tab-content charts-tab">
-                  <div className="chart-card full">
+                  <FacilityOccupancyPanels dateRange={dateRange} granularity={granularity} />
+
+                  <div className="chart-card full chart-card--scope">
                     <h3>
                       <TrendingUp size={18} strokeWidth={2} />
-                      <span>Entries & Exits Over Time</span>
+                      <span>
+                        Combined view — {facility === "ALL" ? "all entry / exit facilities" : getFacilityName(facility)}
+                      </span>
                     </h3>
+                    <p className="chart-card__scope-note">
+                      Scoped to the facility selector in the left sidebar. Export uses this scope.
+                    </p>
                     <TimeSeriesChart data={timeSeriesData} />
-                  </div>
-
-                  <div className="charts-row">
-                    <div className="chart-card half">
-                      <h3>
-                        <Clock size={18} strokeWidth={2} />
-                        <span>Hourly Distribution</span>
-                      </h3>
-                      <HourlyDistributionChart data={hourlyData} />
-                    </div>
-                    <div className="chart-card half">
-                      <h3>
-                        <CalendarDays size={18} strokeWidth={2} />
-                        <span>Weekly Heatmap</span>
-                      </h3>
-                      <HeatmapCalendar data={heatmapData} />
-                    </div>
                   </div>
 
                   {/* Export Panel - only for MANAGEMENT */}
@@ -504,13 +652,14 @@ export default function AnalyticsDashboard() {
               {/* Alerts Tab */}
               {activeTab === "alerts" && (
                 <div className="tab-content alerts-tab">
-                  <AlertsPanel alerts={alerts} />
+                  <AlertsPanel alerts={alerts} loading={loading && overview && !alerts} />
                 </div>
               )}
             </main>
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }

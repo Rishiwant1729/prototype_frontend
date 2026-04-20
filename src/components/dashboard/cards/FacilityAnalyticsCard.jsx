@@ -25,22 +25,22 @@ export default function FacilityAnalyticsCard({
       name: "Gymnasium",
       icon: Dumbbell,
       color: "gym",
-      lineColor: "#ff6b6b",
-      gradient: "linear-gradient(135deg, #ff6b6b, #ee5a5a)"
+      lineColor: "#e65124",
+      gradient: "linear-gradient(135deg, #e65124, #c9461c)"
     },
     BADMINTON: {
       name: "Badminton Court",
       icon: CircleDot,
       color: "badminton",
-      lineColor: "#a78bfa",
-      gradient: "linear-gradient(135deg, #a78bfa, #8b5cf6)"
+      lineColor: "#a3002e",
+      gradient: "linear-gradient(135deg, #a3002e, #7c0024)"
     },
     SWIMMING: {
       name: "Swimming Pool",
       icon: Waves,
       color: "swimming",
-      lineColor: "#4ecdc4",
-      gradient: "linear-gradient(135deg, #4ecdc4, #44a08d)"
+      lineColor: "#1a7a6a",
+      gradient: "linear-gradient(135deg, #2a9d8f, #1a7a6a)"
     }
   };
 

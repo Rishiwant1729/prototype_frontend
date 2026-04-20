@@ -15,8 +15,24 @@ import {
   FileText,
   ChevronDown
 } from "lucide-react";
+import { TableSkeleton } from "../common/Skeleton";
 
-export default function RecentEventsTable({ events, compact = false }) {
+const facilityLabel = (id) => {
+  switch (id) {
+    case "GYM":
+      return "Gymnasium";
+    case "BADMINTON":
+      return "Badminton court";
+    case "SWIMMING":
+      return "Swimming pool";
+    case "SPORTS_ROOM":
+      return "Sport room";
+    default:
+      return id || "—";
+  }
+};
+
+export default function RecentEventsTable({ events, compact = false, layout = "default", loading = false }) {
   const [filter, setFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("timestamp");
@@ -131,6 +147,10 @@ export default function RecentEventsTable({ events, compact = false }) {
     return sortDir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />;
   };
 
+  if (loading) {
+    return <TableSkeleton rows={compact ? 6 : 10} cols={layout === "footfall" ? 5 : 4} />;
+  }
+
   if (!events || events.length === 0) {
     return (
       <div className="events-table__empty">
@@ -142,10 +162,16 @@ export default function RecentEventsTable({ events, compact = false }) {
     );
   }
 
+  const footfall = layout === "footfall";
+
   return (
-    <div className={`events-table ${compact ? "events-table--compact" : ""}`}>
+    <div
+      className={`events-table ${compact ? "events-table--compact" : ""}${
+        footfall ? " events-table--footfall" : ""
+      }`}
+    >
       {/* Filters */}
-      {!compact && (
+      {!compact && !footfall && (
         <div className="events-table__filters">
           <div className="events-table__filter-group">
             <div className="events-table__select-wrapper">
@@ -189,87 +215,120 @@ export default function RecentEventsTable({ events, compact = false }) {
       <div className="events-table__wrapper">
         <table className="events-table__table">
           <thead className="events-table__head">
-            <tr>
-              <th className="events-table__th">Type</th>
-              <th 
-                className="events-table__th events-table__th--sortable"
-                onClick={() => handleSort("timestamp")}
-              >
-                <Clock size={12} />
-                Time
-                <SortIcon field="timestamp" />
-              </th>
-              <th 
-                className="events-table__th events-table__th--sortable"
-                onClick={() => handleSort("student_name")}
-              >
-                <User size={12} />
-                Student
-                <SortIcon field="student_name" />
-              </th>
-              {!compact && (
-                <th className="events-table__th">
+            {footfall ? (
+              <tr>
+                <th className="events-table__th events-table__th--sortable" onClick={() => handleSort("timestamp")}>
+                  <Clock size={12} />
+                  Time
+                  <SortIcon field="timestamp" />
+                </th>
+                <th className="events-table__th events-table__th--sortable" onClick={() => handleSort("student_name")}>
                   <User size={12} />
-                  ID
+                  Student
+                  <SortIcon field="student_name" />
                 </th>
-              )}
-              <th className="events-table__th">
-                <Building2 size={12} />
-                Facility
-              </th>
-              {!compact && (
                 <th className="events-table__th">
-                  <FileText size={12} />
-                  Details
+                  <Building2 size={12} />
+                  Facility
                 </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="events-table__body">
-            {filteredEvents.slice(0, compact ? 10 : 100).map((event, idx) => (
-              <tr key={idx} className={`events-table__row ${getEventClass(event.type)}`}>
-                <td className="events-table__td">
-                  <span className={`events-table__badge events-table__badge--${event.type.toLowerCase().replace("equipment_", "")}`}>
-                    {getEventIcon(event.type)}
-                    <span>{getEventLabel(event.type)}</span>
-                  </span>
-                </td>
-                <td className="events-table__td events-table__td--time">
-                  {formatTimestamp(event.timestamp)}
-                </td>
-                <td className="events-table__td events-table__td--name">
-                  {event.student_name || "Unknown"}
-                </td>
+                <th className="events-table__th">Action</th>
+                <th className="events-table__th">Duration</th>
+              </tr>
+            ) : (
+              <tr>
+                <th className="events-table__th">Type</th>
+                <th
+                  className="events-table__th events-table__th--sortable"
+                  onClick={() => handleSort("timestamp")}
+                >
+                  <Clock size={12} />
+                  Time
+                  <SortIcon field="timestamp" />
+                </th>
+                <th
+                  className="events-table__th events-table__th--sortable"
+                  onClick={() => handleSort("student_name")}
+                >
+                  <User size={12} />
+                  Student
+                  <SortIcon field="student_name" />
+                </th>
                 {!compact && (
-                  <td className="events-table__td events-table__td--id">
-                    {event.student_id || "-"}
-                  </td>
+                  <th className="events-table__th">
+                    <User size={12} />
+                    ID
+                  </th>
                 )}
-                <td className="events-table__td">
-                  <span className="events-table__facility">
-                    <Building2 size={12} />
-                    {event.facility_id}
-                  </span>
-                </td>
+                <th className="events-table__th">
+                  <Building2 size={12} />
+                  Facility
+                </th>
                 {!compact && (
-                  <td className="events-table__td events-table__td--details">
-                    {event.details?.duration_minutes && (
-                      <span className="events-table__detail">
-                        <Clock size={10} />
-                        {event.details.duration_minutes}m
-                      </span>
-                    )}
-                    {event.details?.items && (
-                      <span className="events-table__detail">
-                        {event.details.items.map(i => 
-                          `${i.equipment_type}: ${i.qty || i.returned_qty}`
-                        ).join(", ")}
-                      </span>
-                    )}
-                  </td>
+                  <th className="events-table__th">
+                    <FileText size={12} />
+                    Details
+                  </th>
                 )}
               </tr>
-            ))}
+            )}
+          </thead>
+          <tbody className="events-table__body">
+            {filteredEvents.slice(0, compact ? 10 : 100).map((event, idx) =>
+              footfall ? (
+                <tr key={idx} className={`events-table__row ${getEventClass(event.type)}`}>
+                  <td className="events-table__td events-table__td--time">
+                    {new Date(event.timestamp).toLocaleString()}
+                  </td>
+                  <td className="events-table__td events-table__td--name">{event.student_name || "Unknown"}</td>
+                  <td className="events-table__td">{facilityLabel(event.facility_id)}</td>
+                  <td className="events-table__td">{getEventLabel(event.type)}</td>
+                  <td className="events-table__td">
+                    {event.type === "EXIT" && event.details?.duration_minutes != null
+                      ? `${event.details.duration_minutes} min`
+                      : "—"}
+                  </td>
+                </tr>
+              ) : (
+                <tr key={idx} className={`events-table__row ${getEventClass(event.type)}`}>
+                  <td className="events-table__td">
+                    <span
+                      className={`events-table__badge events-table__badge--${event.type
+                        .toLowerCase()
+                        .replace("equipment_", "")}`}
+                    >
+                      {getEventIcon(event.type)}
+                      <span>{getEventLabel(event.type)}</span>
+                    </span>
+                  </td>
+                  <td className="events-table__td events-table__td--time">{formatTimestamp(event.timestamp)}</td>
+                  <td className="events-table__td events-table__td--name">{event.student_name || "Unknown"}</td>
+                  {!compact && (
+                    <td className="events-table__td events-table__td--id">{event.student_id || "-"}</td>
+                  )}
+                  <td className="events-table__td">
+                    <span className="events-table__facility">
+                      <Building2 size={12} />
+                      {event.facility_id}
+                    </span>
+                  </td>
+                  {!compact && (
+                    <td className="events-table__td events-table__td--details">
+                      {event.details?.duration_minutes && (
+                        <span className="events-table__detail">
+                          <Clock size={10} />
+                          {event.details.duration_minutes}m
+                        </span>
+                      )}
+                      {event.details?.items && (
+                        <span className="events-table__detail">
+                          {event.details.items.map((i) => `${i.equipment_type}: ${i.qty || i.returned_qty}`).join(", ")}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              )
+            )}
           </tbody>
         </table>
       </div>

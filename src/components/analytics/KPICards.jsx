@@ -14,7 +14,7 @@ import {
  * Displays key performance indicators in a grid layout
  * Follows card-based design with consistent spacing and typography
  */
-export default function KPICards({ overview, dateRange }) {
+export default function KPICards({ overview, dateRange, omitEquipmentKpi = false }) {
   const kpis = useMemo(() => {
     if (!overview) return [];
 
@@ -23,7 +23,7 @@ export default function KPICards({ overview, dateRange }) {
     const equipment = overview.active_equipment;
     const alerts = overview.alerts;
 
-    return [
+    const cards = [
       {
         id: "occupancy",
         label: "Current Occupancy",
@@ -50,16 +50,20 @@ export default function KPICards({ overview, dateRange }) {
           value: f.unique_visitors
         })) || []
       },
-      {
-        id: "equipment",
-        label: "Active Equipment",
-        value: equipment?.total_pending_items || 0,
-        Icon: Package,
-        color: "warning",
-        subtext: `${equipment?.active_issues || 0} open issues`,
-        trend: null,
-        details: []
-      },
+      ...(omitEquipmentKpi
+        ? []
+        : [
+            {
+              id: "equipment",
+              label: "Active Equipment",
+              value: equipment?.total_pending_items || 0,
+              Icon: Package,
+              color: "warning",
+              subtext: `${equipment?.active_issues || 0} open issues`,
+              trend: null,
+              details: []
+            }
+          ]),
       {
         id: "alerts",
         label: "Active Alerts",
@@ -73,7 +77,9 @@ export default function KPICards({ overview, dateRange }) {
         details: []
       }
     ];
-  }, [overview]);
+
+    return cards;
+  }, [overview, omitEquipmentKpi]);
 
   const getTrendIcon = (trend) => {
     if (!trend) return null;
@@ -90,7 +96,7 @@ export default function KPICards({ overview, dateRange }) {
           <article key={kpi.id} className={`kpi-card kpi-card--${kpi.color}`}>
             <header className="kpi-card__header">
               <div className={`kpi-card__icon kpi-card__icon--${kpi.color}`}>
-                <IconComponent size={24} strokeWidth={2} />
+                <IconComponent size={18} strokeWidth={2} />
               </div>
               <span className="kpi-card__label">{kpi.label}</span>
             </header>

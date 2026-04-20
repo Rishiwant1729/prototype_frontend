@@ -40,6 +40,11 @@ export const getHeatmapData = (facility, startDate, endDate) =>
     params: { facility, startDate, endDate }
   });
 
+export const getFootfallAnalyticsSummary = (facility, startDate, endDate) =>
+  api.get("/dashboard/analytics/footfall-summary", {
+    params: { facility, startDate, endDate }
+  });
+
 // ============================================
 // EVENTS & TABLES
 // ============================================
@@ -57,7 +62,8 @@ export const getUnmatchedEntries = (olderThanHours = 4) =>
 export const getOverdueReturns = (olderThanHours = 24) =>
   api.get("/dashboard/alerts/overdue", { params: { olderThanHours } });
 
-export const getAllAlerts = () => api.get("/dashboard/alerts");
+/** @param {{ scope?: "entry_exit" }} [params] */
+export const getAllAlerts = (params = {}) => api.get("/dashboard/alerts", { params });
 
 // ============================================
 // EXPORTS & REPORTS
@@ -75,7 +81,9 @@ export const getDailySummary = (date) =>
 // COMBINED OVERVIEW
 // ============================================
 
-export const getDashboardOverview = () => api.get("/dashboard/overview");
+/** @param {{ scope?: "entry_exit" }} [params] — entry_exit: gates only, no sport room / equipment KPIs */
+export const getDashboardOverview = (params = {}) =>
+  api.get("/dashboard/overview", { params });
 
 // ============================================
 // UTILITY FUNCTIONS

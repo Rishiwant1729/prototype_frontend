@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { login as loginApi } from "../api/auth_api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import BrandMark from "../components/common/BrandMark";
+import InlineSpinner from "../components/common/InlineSpinner";
 
 export default function Login() {
   const { login } = useAuth();
@@ -34,18 +36,65 @@ export default function Login() {
   };
 
   return (
-    <form onSubmit={submit}>
-      <h2>Login</h2>
-      <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password"
-             onChange={e => setPassword(e.target.value)} />
-      <button disabled={loading}>
-        {loading ? "Logging in…" : "Login"}
-      </button>
-      {msg && <p>{msg}</p>}
-      <p style={{ marginTop: "16px" }}>
-        No admin account? <Link to="/signup">Create one</Link>
-      </p>
-    </form>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <BrandMark className="brand-mark--auth" alt="Rishihood University" />
+          <p className="auth-brand__eyebrow">Staff access</p>
+          <h1 className="auth-brand__title">Sign in</h1>
+          <p className="auth-brand__subtitle">
+            Facility and sport room operations dashboard
+          </p>
+        </div>
+
+        <form className="auth-form" onSubmit={submit}>
+          <div>
+            <label htmlFor="login-email">Email</label>
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="username"
+              placeholder="you@university.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="login-password">Password</label>
+            <input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+          <button className="auth-form__submit" type="submit" disabled={loading}>
+            {loading ? (
+              <span className="auth-submit__inner">
+                <InlineSpinner size={16} />
+                Signing in…
+              </span>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+          {msg && (
+            <div className="auth-msg auth-msg--error" role="alert">
+              {msg}
+            </div>
+          )}
+        </form>
+
+        <p className="auth-footer">
+          No admin account yet? <Link to="/signup">Create one</Link>
+        </p>
+      </div>
+    </div>
   );
 }

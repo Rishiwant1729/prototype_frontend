@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { BarChart3, TrendingUp, Clock } from "lucide-react";
 
-export default function HourlyDistributionChart({ data, compact = false }) {
+export default function HourlyDistributionChart({ data, compact = false, showPeakSummary }) {
+  const showSummary = showPeakSummary !== undefined ? showPeakSummary : !compact;
   const chartData = useMemo(() => {
     if (!data || !Array.isArray(data)) return { hours: [], maxValue: 0 };
 
@@ -69,28 +70,29 @@ export default function HourlyDistributionChart({ data, compact = false }) {
         })}
       </div>
 
-      {/* Peak hours summary */}
-      <div className="hourly-chart__summary">
-        <div className="hourly-chart__summary-header">
-          <TrendingUp size={14} strokeWidth={2} />
-          <span>Peak Hours</span>
-        </div>
-        <div className="hourly-chart__peak-hours">
-          {peakHours.map((peak, i) => (
-            <span key={i} className="hourly-chart__peak-badge">
-              <Clock size={12} />
-              {peak.label}
-              <span className="hourly-chart__peak-count">{peak.count}</span>
-            </span>
-          ))}
-        </div>
-        {!compact && (
-          <div className="hourly-chart__total">
-            <span className="hourly-chart__total-label">Total Entries</span>
-            <span className="hourly-chart__total-value">{totalEntries.toLocaleString()}</span>
+      {showSummary ? (
+        <div className="hourly-chart__summary">
+          <div className="hourly-chart__summary-header">
+            <TrendingUp size={14} strokeWidth={2} />
+            <span>Peak Hours</span>
           </div>
-        )}
-      </div>
+          <div className="hourly-chart__peak-hours">
+            {peakHours.map((peak, i) => (
+              <span key={i} className="hourly-chart__peak-badge">
+                <Clock size={12} />
+                {peak.label}
+                <span className="hourly-chart__peak-count">{peak.count}</span>
+              </span>
+            ))}
+          </div>
+          {!compact && (
+            <div className="hourly-chart__total">
+              <span className="hourly-chart__total-label">Total Entries</span>
+              <span className="hourly-chart__total-value">{totalEntries.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

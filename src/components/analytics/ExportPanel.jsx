@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getExportData, downloadCSV } from "../../api/dashboard_api";
 import { 
   Download, 
@@ -18,10 +18,17 @@ export default function ExportPanel({ facility, dateRange }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  const exportTypes = [
-    { value: "events", label: "Entry/Exit Events", icon: DoorOpen },
-    { value: "equipment", label: "Equipment Records", icon: Package }
-  ];
+  const exportTypes = useMemo(() => {
+    const types = [
+      { value: "events", label: "Entry/Exit Events", icon: DoorOpen },
+      { value: "equipment", label: "Equipment Records", icon: Package }
+    ];
+    return facility === "ALL" ? types.filter((t) => t.value === "events") : types;
+  }, [facility]);
+
+  useEffect(() => {
+    if (facility === "ALL") setExportType("events");
+  }, [facility]);
 
   const handleExport = async (format = "csv") => {
     try {

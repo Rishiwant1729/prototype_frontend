@@ -6,10 +6,12 @@ import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import SportRoom from "./pages/SportRoom";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import { RailScanFeedProvider } from "./context/RailScanFeedContext";
 
 export default function App() {
   return (
     <AuthProvider>
+      <RailScanFeedProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -44,6 +46,7 @@ export default function App() {
 
         </Routes>
       </BrowserRouter>
+      </RailScanFeedProvider>
     </AuthProvider>
   );
 }

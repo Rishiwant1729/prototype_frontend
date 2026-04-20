@@ -1,0 +1,337 @@
+/* App shell — Kinetic Command layout, Rishihood / RishiVerse palette */
+:root {
+  --app-rail-width: 256px;
+  --app-bar-height: 64px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--rv-page-bg, #f8f9fa);
+}
+
+.app-shell__rail {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 200;
+  width: var(--app-rail-width);
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0.75rem 1rem;
+  background: var(--rv-sidebar-bg, #fdf8f8);
+  border-right: 1px solid #f0e8e8;
+  box-shadow: 2px 0 24px rgba(45, 52, 54, 0.04);
+}
+
+.app-shell__rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0 0.5rem 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.app-shell__rail-titles {
+  min-width: 0;
+}
+
+.app-shell__rail-kicker {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rv-muted, #757575);
+  margin: 0 0 0.15rem;
+}
+
+.app-shell__rail-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rv-maroon, #a32638);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.app-shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  padding: 0 0.25rem;
+}
+
+.app-shell__nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rv-muted, #757575);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-shell__nav-link:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--rv-charcoal, #2d3436);
+}
+
+.app-shell__nav-link--active {
+  color: var(--rv-maroon, #a32638);
+  background: #fff0f3;
+  box-shadow: inset 4px 0 0 0 var(--rv-maroon, #a32638);
+}
+
+.app-shell__rail-slot {
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  padding: 0 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.app-shell__rail-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(163, 38, 56, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-shell__logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(163, 38, 56, 0.35);
+  background: #fff;
+  color: var(--rv-maroon, #a32638);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.app-shell__logout:hover {
+  background: #fff0f3;
+  border-color: var(--rv-maroon, #a32638);
+}
+
+.app-shell__main {
+  flex: 1;
+  margin-left: var(--app-rail-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__bar {
+  position: sticky;
+  top: 0;
+  z-index: 150;
+  min-height: var(--app-bar-height);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e8e8e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.app-shell__bar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.app-shell__bar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-shell__bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.app-shell__greeting-cluster {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-shell__greeting-cluster--command {
+  gap: 0.55rem;
+}
+
+/* Line-art hand PNG → solid brand maroon via mask (transparent PNG) */
+.app-shell__namaste-hand-mask {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background-color: var(--rv-maroon, #a32638);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  filter: drop-shadow(0 1px 1px rgba(163, 38, 56, 0.28));
+}
+
+.app-shell__greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-shell__greet-line {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--rv-charcoal, #2d3436);
+}
+
+.app-shell__greet-line strong {
+  color: var(--rv-maroon, #a32638);
+  font-weight: 700;
+}
+
+.app-shell__greet-sub {
+  font-size: 0.78rem;
+  color: var(--rv-muted, #757575);
+}
+
+.app-shell__greet-sub em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--rv-maroon, #a32638);
+}
+
+.app-shell__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--rv-maroon, #a32638);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-shell__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(45, 52, 54, 0.1);
+  background: #fff;
+  color: var(--rv-maroon, #a32638);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.app-shell__icon-btn:hover {
+  background: #fff0f3;
+  border-color: rgba(163, 38, 56, 0.3);
+}
+
+.app-shell__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tonal layering inside canvas (no new colors) */
+.kc-surface-0 {
+  background: var(--rv-page-bg, #f8f9fa);
+}
+
+.kc-surface-1 {
+  background: #fafafa;
+}
+
+.kc-surface-2 {
+  background: #ffffff;
+}
+
+/* Activity vertical rhythm (alternating, borderless feel) */
+.activity-item:nth-child(even) {
+  background: #fafafa;
+}
+
+.activity-item:nth-child(odd) {
+  background: #f3f4f6;
+}
+
+.activity-item:hover {
+  background: #fff0f3 !important;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --app-rail-width: 220px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell__rail {
+    width: 72px;
+    padding: 1rem 0.35rem;
+  }
+
+  :root {
+    --app-rail-width: 72px;
+  }
+
+  .app-shell__rail-titles,
+  .app-shell__nav-link span:not(.app-shell__nav-icon) {
+    display: none;
+  }
+
+  .app-shell__nav-link {
+    justify-content: center;
+    padding: 0.65rem 0.5rem;
+  }
+
+  .app-shell__logout span {
+    display: none;
+  }
+}

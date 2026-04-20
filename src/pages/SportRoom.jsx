@@ -13,10 +13,11 @@ import KPICards from '../components/analytics/KPICards';
 import TimeSeriesChart from '../components/analytics/TimeSeriesChart';
 import RecentEventsTable from '../components/analytics/RecentEventsTable';
 import { getDashboardOverview, getOccupancyTimeSeries } from '../api/dashboard_api';
-import { Building2, BarChart3, RefreshCw, LogOut, Activity } from 'lucide-react';
+import AppShell from '../components/layout/AppShell';
+import { ChartCardSkeleton, ListSkeleton, SkeletonBlock, StatCardSkeleton, TableSkeleton } from '../components/common/Skeleton';
 
 export default function SportRoom() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const [overview, setOverview] = useState(null);
   const [tsData, setTsData] = useState(null);
   const [equipment, setEquipment] = useState([]);
@@ -484,23 +485,25 @@ export default function SportRoom() {
     }
   };
 
-  // New style tokens for main area
   const mainStyles = {
-    background: 'linear-gradient(180deg, rgba(6,10,15,0.6), rgba(8,14,24,0.55))',
-    padding: 12,
-    borderRadius: 12,
-    color: 'rgba(255,255,255,0.95)'
+    background: "#ffffff",
+    padding: 16,
+    borderRadius: 14,
+    color: "#2d3436",
+    border: "1px solid #e8e8e8",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
   };
 
   const cardStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    padding: 12,
-    boxShadow: '0 1px 0 rgba(255,255,255,0.02)'
+    background: "#ffffff",
+    borderRadius: 14,
+    padding: 16,
+    border: "1px solid #e8e8e8",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)"
   };
 
-  const kpiValueStyle = { fontSize: 28, fontWeight: 800, color: '#ffffff' };
-  const kpiLabelStyle = { fontSize: 12, color: 'rgba(255,255,255,0.75)' };
+  const kpiValueStyle = { fontSize: 28, fontWeight: 800, color: "#a32638" };
+  const kpiLabelStyle = { fontSize: 12, color: "#757575" };
 
   // Time range for usage panel
   const [usageRange, setUsageRange] = useState('day'); // 'day' | 'week' | 'month'
@@ -605,7 +608,7 @@ export default function SportRoom() {
           return <path key={d.name} d={path} fill={colors[i % colors.length]} opacity={0.95} />;
         })}
         {/* inner white circle to create donut */}
-        <circle cx={size/2} cy={size/2} r={inner} fill="#071022" />
+        <circle cx={size/2} cy={size/2} r={inner} fill="#2d3436" />
         <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" style={{ fill: 'white', fontSize: 14, fontWeight: 700 }}>
           {data.slice(0,3).reduce((s,d)=>s+(d.issued||0),0)}/{data.reduce((s,d)=>s+(d.issued||0),0)}
         </text>
@@ -614,53 +617,8 @@ export default function SportRoom() {
   };
 
   return (
-    <div className="sportroom-wrapper">
-      <div className="dashboard-wrapper">
-        {/* Top Navbar - replaced with main dashboard-style navbar */}
-        <nav className="top-navbar">
-          <div className="logo">
-            <div className="logo-icon">
-              <Building2 size={24} strokeWidth={2} />
-            </div>
-            <div>
-              <div className="logo-text">Sport Room</div>
-              <div className="logo-subtitle">Equipment Inventory & Logs</div>
-            </div>
-          </div>
-
-          <div className="header-actions">
-            <a href="/" className="header-btn secondary">
-              <Building2 size={16} strokeWidth={2} />
-              <span>Dashboard</span>
-            </a>
-
-            <a href="/analytics" className="header-btn secondary">
-              <BarChart3 size={16} strokeWidth={2} />
-              <span>Analysis</span>
-            </a>
-
-            <a href="/sport-room" className="header-btn secondary">
-              <Activity size={16} strokeWidth={2} />
-              <span>Sport Room</span>
-            </a>
-
-            <button className="header-btn secondary" onClick={() => window.location.reload()}>
-              <RefreshCw size={16} strokeWidth={2} />
-              <span>Refresh</span>
-            </button>
-            <button 
-              className="header-btn primary"
-              onClick={() => {
-                logout && logout();
-                window.location.href = "/login";
-              }}
-            >
-              <LogOut size={16} strokeWidth={2} />
-              <span>Logout</span>
-            </button>
-          </div>
-        </nav>
-
+    <AppShell pageEmphasis="Sport room" onRefresh={fetchData}>
+      <div className="sportroom-wrapper" style={{ flex: 1, minHeight: 0, width: "100%" }}>
         <div className="dashboard-container" style={{ padding: 24 }}>
           <div style={{ width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="sidebar-card">
@@ -676,13 +634,17 @@ export default function SportRoom() {
             <div className="sidebar-card">
               <h3 className="sidebar-card__title">Available Equipment</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>Inventory</div>
+                <div style={{ fontSize: 13, color: "#2d3436" }}>Inventory</div>
                 <div>
                   <button className="btn btn--sm" onClick={fetchData} style={{ marginRight: 8 }}>Refresh</button>
                 </div>
               </div>
 
-              {loading ? <p style={{ marginTop: 12 }}>Loading...</p> : (
+              {loading ? (
+                <div style={{ marginTop: 12 }} aria-busy="true">
+                  <ListSkeleton rows={6} />
+                </div>
+              ) : (
                 <div className="equipment-list">
                    {equipment.map(eq => {
                     const id = eq.equipment_id || eq.id || '—';
@@ -698,16 +660,16 @@ export default function SportRoom() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                             <div>
                               <div className="equipment-name">{name}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ID: {id} • Type: {eq.equipment_type || eq.category || ''}</div>
+                              <div style={{ fontSize: 12, color: "#757575" }}>ID: {id} • Type: {eq.equipment_type || eq.category || ""}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontWeight: 700 }}>{available} / {total}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{pct}% available</div>
+                              <div style={{ fontSize: 12, color: "#757575" }}>{pct}% available</div>
                             </div>
                           </div>
 
                           {/* simple availability bar */}
-                          <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 6, marginTop: 8 }}>
+                          <div style={{ height: 8, background: "#f0f0f0", borderRadius: 6, marginTop: 8 }}>
                             <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#60a5fa,#06b6d4)', borderRadius: 6 }} />
                           </div>
                         </div>
@@ -716,7 +678,7 @@ export default function SportRoom() {
                   })}
                   {/* Empty state when inventory is available but list is empty */}
                   {equipment.length === 0 && !loading && (
-                    <div style={{ padding: 12, color: 'rgba(255,255,255,0.6)' }}>
+                    <div style={{ padding: 12, color: "#757575" }}>
                       No equipment found. If you are logged in but see this, try Refresh. Ensure the backend allows this account to view inventory.
                     </div>
                   )}
@@ -726,7 +688,11 @@ export default function SportRoom() {
 
             <div className="sidebar-card">
               <h3 className="sidebar-card__title">Recent Logs</h3>
-              {recent.length === 0 ? (
+              {loading ? (
+                <div style={{ marginTop: 10 }} aria-busy="true">
+                  <ListSkeleton rows={6} />
+                </div>
+              ) : recent.length === 0 ? (
                 <p>No recent logs</p>
               ) : (
                 <div className="recent-list">
@@ -747,16 +713,16 @@ export default function SportRoom() {
                       <div key={i} className="recent-row">
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 16, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 16, background: "#fff0f3", color: "#a32638", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                               {(studentObj.student_name || '?').charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div style={{ fontWeight: 700 }}>{studentObj.student_name}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ID: {studentObj.student_id} • {action} • {itemsCount} item(s)</div>
+                              <div style={{ fontSize: 12, color: "#757575" }}>ID: {studentObj.student_id} • {action} • {itemsCount} item(s)</div>
                             </div>
                           </div>
 
-                          <div style={{ color: 'rgba(255,255,255,0.6)' }}>{timeStr}</div>
+                          <div style={{ color: "#757575" }}>{timeStr}</div>
                         </div>
 
                         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -781,26 +747,34 @@ export default function SportRoom() {
               <>
                 {/* TOP: KPI Statistic Cards (4-6) */}
                 <div className="kpi-grid" style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
-                  {[
-                    { id: 'studentsInside', label: 'Students Inside', value: computed.studentsInside, color: '#60a5fa' },
-                    { id: 'activeIssues', label: 'Active Equipment Issues', value: computed.activeEquipmentIssues, color: '#f97316' },
-                    { id: 'studentsPending', label: 'Students with Pending Returns', value: computed.studentsWithPending, color: computed.studentsWithPending > 0 ? '#f59e0b' : '#94a3b8' },
-                    { id: 'issuedToday', label: 'Equipment Issued Today', value: computed.issuedTodayCount, color: '#34d399' },
-                    { id: 'avgSession', label: 'Avg Session Time', value: computed.avgSession || '—', color: '#94a3b8' }
-                  ].map(kpi => (
-                    <article key={kpi.id} style={{ ...cardStyle, minWidth: 170, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={kpiValueStyle}>{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</div>
-                          <div style={kpiLabelStyle}>{kpi.label}</div>
-                        </div>
-
-                        <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 6, background: kpi.color }} />
-                        </div>
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} style={{ minWidth: 170, flex: 1 }}>
+                        <StatCardSkeleton />
                       </div>
-                    </article>
-                  ))}
+                    ))
+                  ) : (
+                    [
+                      { id: 'studentsInside', label: 'Students Inside', value: computed.studentsInside, color: '#60a5fa' },
+                      { id: 'activeIssues', label: 'Active Equipment Issues', value: computed.activeEquipmentIssues, color: '#f97316' },
+                      { id: 'studentsPending', label: 'Students with Pending Returns', value: computed.studentsWithPending, color: computed.studentsWithPending > 0 ? '#f59e0b' : '#94a3b8' },
+                      { id: 'issuedToday', label: 'Equipment Issued Today', value: computed.issuedTodayCount, color: '#34d399' },
+                      { id: 'avgSession', label: 'Avg Session Time', value: computed.avgSession || '—', color: '#94a3b8' }
+                    ].map(kpi => (
+                      <article key={kpi.id} style={{ ...cardStyle, minWidth: 170, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={kpiValueStyle}>{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</div>
+                            <div style={kpiLabelStyle}>{kpi.label}</div>
+                          </div>
+
+                          <div style={{ width: 44, height: 44, borderRadius: 10, background: "#f8f9fa", border: "1px solid #ececec", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ width: 12, height: 12, borderRadius: 6, background: kpi.color }} />
+                          </div>
+                        </div>
+                      </article>
+                    ))
+                  )}
                 </div>
 
                 {/* MIDDLE: Two-column area: Usage (left) + Pending Students (right) */}
@@ -809,8 +783,8 @@ export default function SportRoom() {
                   <div style={{ flex: 1, ...cardStyle, ...mainStyles }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h3 style={{ margin: 0, color: 'white' }}>Equipment Usage</h3>
-                        <p style={{ marginTop: 6, marginBottom: 0, color: 'rgba(255,255,255,0.65)' }}>Which equipment is used most. Choose a range.</p>
+                        <h3 style={{ margin: 0, color: "#a32638" }}>Equipment Usage</h3>
+                        <p style={{ marginTop: 6, marginBottom: 0, color: "#757575" }}>Which equipment is used most. Choose a range.</p>
                       </div>
 
                       <div style={{ display: 'flex', gap: 8 }}>
@@ -820,51 +794,62 @@ export default function SportRoom() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
-                      <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <PieDonut data={(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday })))} size={180} inner={48} />
+                    {loading ? (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }} aria-busy="true">
+                        <SkeletonBlock width={180} height={180} radius={999} aria-label="Loading usage chart" />
+                        <div style={{ flex: 1 }}>
+                          <ListSkeleton rows={6} />
+                        </div>
                       </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
+                        <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <PieDonut data={(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday })))} size={180} inner={48} />
+                        </div>
 
-                      <div style={{ flex: 1 }}>
-                        {(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).slice(0,8).map((u, idx) => {
-                          const total = (usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).reduce((s,x)=>s+(x.issued||0),0) || 1;
-                          const pct = Math.round(((u.issued||0) / total) * 100);
-                          return (
-                            <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', borderRadius: 6 }}>
-                              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                <div style={{ width: 10, height: 10, borderRadius: 3, background: ['#60a5fa','#34d399','#f97316','#f59e0b','#a78bfa','#fb7185'][idx % 6] }} />
-                                <div style={{ fontWeight: 700, color: 'white' }}>{u.name}</div>
+                        <div style={{ flex: 1 }}>
+                          {(usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).slice(0,8).map((u, idx) => {
+                            const total = (usageForRange.length ? usageForRange : dummyUsage.map(d=>({ name: d.name, issued: d.issuedToday }))).reduce((s,x)=>s+(x.issued||0),0) || 1;
+                            const pct = Math.round(((u.issued||0) / total) * 100);
+                            return (
+                              <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', borderRadius: 6 }}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                  <div style={{ width: 10, height: 10, borderRadius: 3, background: ['#60a5fa','#34d399','#f97316','#f59e0b','#a78bfa','#fb7185'][idx % 6] }} />
+                                  <div style={{ fontWeight: 700, color: "#2d3436" }}>{u.name}</div>
+                                </div>
+
+                                <div style={{ fontSize: 13, color: "#757575" }}>{u.issued} • {pct}%</div>
                               </div>
-
-                              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{u.issued} • {pct}%</div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* RIGHT: Pending Students card */}
                   <div style={{ width: 360, ...cardStyle, padding: 12 }}>
-                    <h3 style={{ margin: 0 }}>Students with Pending Returns</h3>
+                    <h3 style={{ margin: 0, color: "#a32638" }}>Students with Pending Returns</h3>
                     
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
-                      {pendingStudentsList.length === 0 ? (
-                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>No pending returns</div>
+                      {loading ? (
+                        <ListSkeleton rows={6} />
+                      ) : pendingStudentsList.length === 0 ? (
+                        <div style={{ color: "#757575" }}>No pending returns</div>
                       ) : (
                         pendingStudentsList.slice(0, 20).map((s, idx) => (
-                          <div key={s.student_id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                          <div key={s.student_id || idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px", borderRadius: 8, background: "#f8f9fa", border: "1px solid #ececec" }}>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                              <div style={{ width: 40, height: 40, borderRadius: 999, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{(s.student_name||'?').charAt(0).toUpperCase()}</div>
+                              <div style={{ width: 40, height: 40, borderRadius: 999, background: "#fff0f3", color: "#a32638", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{(s.student_name||"?").charAt(0).toUpperCase()}</div>
                               <div>
                                 <div style={{ fontWeight: 700 }}>{s.student_name}</div>
-                                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ID: {s.student_id} • {s.outstanding} item(s) pending</div>
+                                <div style={{ fontSize: 12, color: "#757575" }}>ID: {s.student_id} • {s.outstanding} item(s) pending</div>
                               </div>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{s.lastActivity ? new Date(s.lastActivity).toLocaleString() : ''}</div>
+                              <div style={{ fontSize: 12, color: "#757575" }}>{s.lastActivity ? new Date(s.lastActivity).toLocaleString() : ""}</div>
                               <div>
                                 <button className="btn btn--sm" onClick={() => setActiveCard({ type: 'RETURN', payload: { student: { student_id: s.student_id, student_name: s.student_name }, items: s.items || [], issue_id: null, issued_at: s.lastActivity } })}>Start Return</button>
                               </div>
@@ -877,19 +862,19 @@ export default function SportRoom() {
                 </div>
 
                 {/* BOTTOM: Live Activity Feed (use analytics RecentEventsTable) */}
-                <div style={{ ...cardStyle, background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))' }}>
-                  <h3 style={{ margin: 0, color: 'white' }}>Live Activity Feed</h3>
+                <div style={{ ...cardStyle, background: "#ffffff" }}>
+                  <h3 style={{ margin: 0, color: "#a32638" }}>Live Activity Feed</h3>
                   
 
                   <div style={{ marginTop: 8 }}>
-                    <RecentEventsTable events={eventsForTable} compact={false} />
+                    <RecentEventsTable events={eventsForTable} compact={false} loading={loading && eventsForTable.length === 0} />
                   </div>
                 </div>
               </>
             )}
           </div>
-         </div>
-       </div>
-     </div>
-   );
- }
+        </div>
+      </div>
+    </AppShell>
+  );
+}

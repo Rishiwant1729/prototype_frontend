@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import useScanListener from "../../hooks/useScanListener";
 import { useAuth } from "../../context/AuthContext";
 import ProcessingCard from "./cards/ProcessingCard";
@@ -10,15 +11,38 @@ import BlockedCard from "./cards/BlockedCard";
 import WaitingCard from "./cards/WaitingCard";
 import UnregisteredCard from "./cards/UnregisteredCard";
 import Sidebar from "./Sidebar";
-import FacilityAnalyticsCard from "./cards/FacilityAnalyticsCard";
-import { Building2, BarChart3, RefreshCw, LogOut, Activity } from "lucide-react";
-import { getOccupancyTimeSeries } from "../../api/dashboard_api";
+import AppShell from "../layout/AppShell";
+import FacilityMapPanel from "./FacilityMapPanel";
+import { useRailScanFeed } from "../../context/RailScanFeedContext";
+import { Bell, Download, Filter, Plus } from "lucide-react";
 import "../../styles/dashboard.css";
 
+function logActionLabel(facility, action) {
+  const a = String(action || "").toUpperCase();
+  if (facility === "SPORTS_ROOM") {
+    if (a === "ISSUED" || a === "ISSUE") return "EQUIP_ISSUE";
+    if (a === "RETURNED" || a === "RETURN") return "EQUIP_RETURN";
+  }
+  if (a === "ENTRY") return "ENTRY_ACCESS";
+  if (a === "EXIT") return "EXIT_ACCESS";
+  return a || "EVENT";
+}
+
+function aggregateIssueUsage(issues) {
+  const map = {};
+  issues.forEach((issue) => {
+    (issue.items || []).forEach((it) => {
+      const label = it.equipment_name || it.name || it.type || it.equipment_type || "Equipment";
+      map[label] = (map[label] || 0) + (Number(it.qty ?? it.issued_qty ?? 1) || 1);
+    });
+  });
+  return Object.entries(map).map(([name, issued]) => ({ name, issued }));
+}
+
 export default function DashboardLayout() {
-  const { token, logout } = useAuth();
+  const { token, userName } = useAuth();
+  const recentScans = useRailScanFeed();
   const [activeCard, setActiveCard] = useState(null);
-  const [recentScans, setRecentScans] = useState([]);
   const [recentIssues, setRecentIssues] = useState([]);
   const [pendingReturns, setPendingReturns] = useState([]);
   const [facilityStats, setFacilityStats] = useState({
@@ -28,72 +52,69 @@ export default function DashboardLayout() {
     SPORTS_ROOM: 0
   });
 
-  // Analytics data state
-  const [analyticsData, setAnalyticsData] = useState({
-    GYM: null,
-    BADMINTON: null,
-    SWIMMING: null
-  });
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [opsView, setOpsView] = useState("live");
+  const [studentQuery, setStudentQuery] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
 
-  // Fetch analytics data on mount
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      setAnalyticsLoading(true);
-      try {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const today = new Date();
-        
-        const startDate = yesterday.toISOString().split('T')[0];
-        const endDate = today.toISOString().split('T')[0];
+  const mergedRecentOps = useMemo(() => {
+    return recentScans
+      .filter((s) => {
+        const gate =
+          ["GYM", "SWIMMING", "BADMINTON"].includes(s.facility) &&
+          ["ENTRY", "EXIT"].includes(String(s.action || ""));
+        const sport =
+          s.facility === "SPORTS_ROOM" &&
+          ["ISSUED", "RETURNED", "ISSUE", "RETURN"].includes(String(s.action || "").toUpperCase());
+        return gate || sport;
+      })
+      .map((s) => ({
+        ...s,
+        action:
+          s.action === "ISSUE"
+            ? "ISSUED"
+            : s.action === "RETURN"
+              ? "RETURNED"
+              : s.action
+      }))
+      .slice(0, 10);
+  }, [recentScans]);
 
-        const [gymData, badmintonData, swimmingData] = await Promise.all([
-          getOccupancyTimeSeries('GYM', startDate, endDate, 'hourly').catch(() => null),
-          getOccupancyTimeSeries('BADMINTON', startDate, endDate, 'hourly').catch(() => null),
-          getOccupancyTimeSeries('SWIMMING', startDate, endDate, 'hourly').catch(() => null)
-        ]);
+  const filteredActivityLog = useMemo(() => {
+    const g = globalSearch.trim().toLowerCase();
+    return recentScans
+      .filter((row) => {
+        if (!g) return true;
+        return [row.student, row.facility, row.action].some((f) =>
+          String(f || "")
+            .toLowerCase()
+            .includes(g)
+        );
+      })
+      .slice(0, 40);
+  }, [recentScans, globalSearch]);
 
-        setAnalyticsData({
-          GYM: gymData?.data || null,
-          BADMINTON: badmintonData?.data || null,
-          SWIMMING: swimmingData?.data || null
-        });
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
-      } finally {
-        setAnalyticsLoading(false);
-      }
-    };
+  const usageRows = useMemo(() => aggregateIssueUsage(recentIssues), [recentIssues]);
 
-    fetchAnalytics();
+  const studentsInside =
+    (facilityStats.GYM || 0) + (facilityStats.SWIMMING || 0) + (facilityStats.BADMINTON || 0);
+
+  const startOfDay = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
   }, []);
 
-  // Derive filtered lists for sidebar
-  const recentFacilityScans = recentScans
-    .filter(scan => 
-      ['GYM', 'SWIMMING', 'BADMINTON'].includes(scan.facility) && 
-      ['ENTRY', 'EXIT'].includes(scan.action)
-    )
-    .slice(0, 8);
-
-  const recentSportsRoomActivity = recentScans
-    .filter(scan => 
-      scan.facility === 'SPORTS_ROOM' && 
-      ['ISSUED', 'RETURNED', 'ISSUE', 'RETURN'].includes(scan.action)
-    )
-    .map(scan => ({
-      ...scan,
-      action: scan.action === 'ISSUE' ? 'ISSUED' : scan.action === 'RETURN' ? 'RETURNED' : scan.action
-    }))
-    .slice(0, 8);
+  const issuedToday = useMemo(() => {
+    return recentScans.filter((s) => {
+      const t = s.time instanceof Date ? s.time : new Date(s.time);
+      const act = String(s.action || "").toUpperCase();
+      return s.facility === "SPORTS_ROOM" && (act === "ISSUED" || act === "ISSUE") && t >= startOfDay;
+    }).length;
+  }, [recentScans, startOfDay]);
 
   // Handle WebSocket scan events
   useScanListener((scan) => {
     console.log("📥 Dashboard received scan:", scan);
-
-    // Add to recent scans
-    addRecentScan(scan);
 
     // Route based on facility type
     if (scan.facility === "SPORTS_ROOM") {
@@ -201,19 +222,6 @@ export default function DashboardLayout() {
       default:
         break;
     }
-  };
-
-  // Add recent scan to sidebar
-  const addRecentScan = (scan) => {
-    const entry = {
-      id: Date.now(),
-      student: scan.student?.student_name || "Unknown",
-      facility: scan.facility,
-      action: scan.action || scan.mode,
-      time: new Date()
-    };
-
-    setRecentScans((prev) => [entry, ...prev.slice(0, 9)]);
   };
 
   // Update facility count
@@ -439,92 +447,233 @@ export default function DashboardLayout() {
     }
   };
 
+  const headerLeft = (
+    <div className="kc-view-tabs" role="tablist" aria-label="Dashboard view">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={opsView === "live"}
+        className={`kc-view-tab${opsView === "live" ? " kc-view-tab--active" : ""}`}
+        onClick={() => setOpsView("live")}
+      >
+        Live view
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={opsView === "map"}
+        className={`kc-view-tab${opsView === "map" ? " kc-view-tab--active" : ""}`}
+        onClick={() => setOpsView("map")}
+      >
+        Facility map
+      </button>
+    </div>
+  );
+
+  const headerExtras = (
+    <div className="kc-bar-extras">
+      <div className="kc-global-search-wrap">
+        <input
+          type="search"
+          className="kc-global-search"
+          placeholder="Global search…"
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
+          aria-label="Filter live activity log"
+        />
+      </div>
+      <button type="button" className="kc-icon-btn kc-icon-btn--notify" aria-label="Notifications">
+        <Bell size={18} strokeWidth={2} />
+        <span className="kc-notify-dot" />
+      </button>
+    </div>
+  );
+
+  const maxIssued = Math.max(1, ...usageRows.map((r) => r.issued));
+
   return (
-    <div className="dashboard-wrapper">
-      {/* Top Navbar */}
-      <nav className="top-navbar">
-        <div className="logo">
-          <div className="logo-icon">
-            <Building2 size={24} strokeWidth={2} />
-          </div>
-          <div>
-            <div className="logo-text">Sports Tracker</div>
-            <div className="logo-subtitle">Facility Management System</div>
-          </div>
-        </div>
-
-        <div className="header-actions">
-          <a href="/" className="header-btn secondary">
-            <Building2 size={16} strokeWidth={2} />
-            <span>Dashboard</span>
-          </a>
-
-          <a href="/analytics" className="header-btn secondary">
-            <BarChart3 size={16} strokeWidth={2} />
-            <span>Analysis</span>
-          </a>
-
-          <a href="/sport-room" className="header-btn secondary">
-            <Activity size={16} strokeWidth={2} />
-            <span>Sport Room</span>
-          </a>
-
-          <button className="header-btn secondary" onClick={() => window.location.reload()}>
-            <RefreshCw size={16} strokeWidth={2} />
-            <span>Refresh</span>
-          </button>
-          <button 
-            className="header-btn primary"
-            onClick={() => {
-              logout();
-              window.location.href = "/login";
-            }}
-          >
-            <LogOut size={16} strokeWidth={2} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content Area */}
-      <div className="dashboard-container">
+    <AppShell
+      pageEmphasis="Facility operations"
+      onRefresh={() => window.location.reload()}
+      headerLeft={headerLeft}
+      headerExtras={headerExtras}
+    >
+      <>
+      <div className="dashboard-container kc-ops-dashboard">
         <Sidebar
           facilityStats={facilityStats}
-          recentFacilityScans={recentFacilityScans}
-          recentSportsRoomActivity={recentSportsRoomActivity}
+          recentScans={recentScans}
+          mergedRecentOps={mergedRecentOps}
+          studentQuery={studentQuery}
+          onStudentQueryChange={setStudentQuery}
         />
 
-        <div className="main-area">
-          <div className="main-area__scan-card">
-            {renderCard()}
-          </div>
+        <div className="main-area kc-ops-main-area">
+          {opsView === "map" ? (
+            <FacilityMapPanel facilityStats={facilityStats} />
+          ) : (
+            <>
+              <div className="kc-kpi-row">
+                <article className="kc-kpi-card">
+                  <p className="kc-kpi-label">Students inside</p>
+                  <p className="kc-kpi-value kc-kpi-value--accent">{studentsInside}</p>
+                </article>
+                <article className="kc-kpi-card">
+                  <p className="kc-kpi-label">Active issues</p>
+                  <p className="kc-kpi-value">{recentIssues.length}</p>
+                </article>
+                <article className="kc-kpi-card kc-kpi-card--warn">
+                  <p className="kc-kpi-label">Pending returns</p>
+                  <p className="kc-kpi-value kc-kpi-value--warn">{pendingReturns.length}</p>
+                </article>
+                <article className="kc-kpi-card">
+                  <p className="kc-kpi-label">Issued today</p>
+                  <p className="kc-kpi-value">{issuedToday}</p>
+                </article>
+                <article className="kc-kpi-card">
+                  <p className="kc-kpi-label">Avg. session</p>
+                  <p className="kc-kpi-value kc-kpi-value--muted">—</p>
+                </article>
+              </div>
 
-          {/* Analytics Cards Section */}
-          <div className="main-area__analytics">
-            <h3 className="analytics-section-title">Past Day Usage Trends</h3>
-            <div className="analytics-cards-grid">
-              <FacilityAnalyticsCard
-                facility="GYM"
-                data={analyticsData.GYM}
-                loading={analyticsLoading}
-                currentCount={facilityStats.GYM}
-              />
-              <FacilityAnalyticsCard
-                facility="BADMINTON"
-                data={analyticsData.BADMINTON}
-                loading={analyticsLoading}
-                currentCount={facilityStats.BADMINTON}
-              />
-              <FacilityAnalyticsCard
-                facility="SWIMMING"
-                data={analyticsData.SWIMMING}
-                loading={analyticsLoading}
-                currentCount={facilityStats.SWIMMING}
-              />
-            </div>
-          </div>
+              <div className="kc-ops-mid-grid">
+                <section className="kc-panel">
+                  <header className="kc-panel__head">
+                    <h2 className="kc-panel__title">Equipment usage</h2>
+                  </header>
+                  <div className="kc-panel__body kc-usage-list">
+                    {usageRows.length === 0 ? (
+                      <p className="kc-panel__empty">
+                        Issue equipment from the sport room to see usage here.
+                      </p>
+                    ) : (
+                      usageRows.map((row) => (
+                        <div key={row.name} className="kc-usage-row">
+                          <div className="kc-usage-row__main">
+                            <div className="kc-usage-row__labels">
+                              <span>{row.name}</span>
+                              <span className="kc-usage-row__meta">{row.issued} issued</span>
+                            </div>
+                            <div className="kc-usage-bar">
+                              <div
+                                className="kc-usage-bar__fill"
+                                style={{ width: `${Math.min(100, Math.round((row.issued / maxIssued) * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="kc-usage-row__badge">Live</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="kc-panel">
+                  <header className="kc-panel__head kc-panel__head--split">
+                    <h2 className="kc-panel__title">Pending returns</h2>
+                    <Link className="kc-panel__link" to="/sport-room">
+                      View all
+                    </Link>
+                  </header>
+                  <div className="kc-panel__body kc-pending-list">
+                    {recentIssues.length === 0 ? (
+                      <p className="kc-panel__empty">No active desk issues on this session.</p>
+                    ) : (
+                      recentIssues.map((issue) => {
+                        const n = (issue.items || []).length || 1;
+                        return (
+                          <div key={issue.id} className="kc-pending-row">
+                            <div className="kc-pending-row__avatar" aria-hidden>
+                              <span>{String(issue.student || "?").charAt(0).toUpperCase()}</span>
+                            </div>
+                            <div>
+                              <p className="kc-pending-row__name">{issue.student}</p>
+                              <p className="kc-pending-row__meta">{n} item(s) on record</p>
+                            </div>
+                            <div className="kc-pending-row__right">
+                              <span className="kc-pending-pill">Active</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className="main-area__scan-card kc-scan-stage">
+                {renderCard()}
+              </div>
+
+              <section className="kc-live-log" aria-label="Live activity log">
+                <header className="kc-live-log__head">
+                  <div className="kc-live-log__title-wrap">
+                    <span className="kc-live-dot" aria-hidden />
+                    <h2 className="kc-live-log__title">Live activity log</h2>
+                  </div>
+                  <div className="kc-live-log__tools">
+                    <button type="button" className="kc-icon-btn" aria-label="Filters">
+                      <Filter size={18} strokeWidth={2} />
+                    </button>
+                    <button type="button" className="kc-icon-btn" aria-label="Export">
+                      <Download size={18} strokeWidth={2} />
+                    </button>
+                  </div>
+                </header>
+                <div className="kc-live-log__scroll">
+                  <table className="kc-live-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Entity</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredActivityLog.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="kc-live-table__empty">
+                            No rows match this filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredActivityLog.map((row, idx) => {
+                          const t = row.time instanceof Date ? row.time : new Date(row.time);
+                          return (
+                            <tr
+                              key={row.id}
+                              className={idx % 2 === 1 ? "kc-live-table__row--alt" : undefined}
+                            >
+                              <td className="kc-live-table__mono">
+                                {t.toLocaleTimeString([], { hour12: false })}
+                              </td>
+                              <td className="kc-live-table__strong">{row.student}</td>
+                              <td>{logActionLabel(row.facility, row.action)}</td>
+                              <td className="kc-live-table__muted">
+                                {row.facility} / RFID scan
+                              </td>
+                              <td>
+                                <span className="kc-live-status">Success</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </div>
-    </div>
+
+      <Link to="/sport-room" className="kc-fab" title="Open sport room" aria-label="Open sport room">
+        <Plus size={24} strokeWidth={2} />
+      </Link>
+      </>
+    </AppShell>
   );
 }

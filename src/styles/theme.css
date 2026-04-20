@@ -1,0 +1,399 @@
+/* RishiVerse-inspired shell — Rishihood University */
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap");
+
+:root {
+  /* RishiVerse reference palette */
+  --rv-maroon: #a32638;
+  --rv-maroon-dark: #861f2d;
+  --rv-maroon-soft: #c94d5c;
+  --rv-active: #fff0f3;
+  --rv-active-border: rgba(163, 38, 56, 0.2);
+  --rv-page-bg: #f8f9fa;
+  --rv-sidebar-bg: #fdf8f8;
+  --rv-surface: #ffffff;
+  --rv-charcoal: #2d3436;
+  --rv-muted: #757575;
+  --rv-border: #e8e8e8;
+  --rv-border-strong: #e0e0e0;
+  --rv-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --rv-shadow-float: 0 4px 24px rgba(45, 52, 54, 0.06);
+  --rv-radius-sm: 10px;
+  --rv-radius-md: 14px;
+  --rv-radius-lg: 16px;
+  --rv-radius-xl: 18px;
+  --rv-radius-pill: 999px;
+
+  /* Legacy aliases (used across existing CSS) */
+  --rh-orange: #e65124;
+  --rh-orange-hover: #c9461c;
+  --rh-maroon: var(--rv-maroon);
+  --rh-maroon-dark: var(--rv-maroon-dark);
+  --rh-charcoal: var(--rv-charcoal);
+  --rh-muted: var(--rv-muted);
+  --rh-bg: var(--rv-page-bg);
+  --rh-bg-warm: #f5f0f0;
+  --rh-surface: var(--rv-surface);
+  --rh-border: rgba(45, 52, 54, 0.08);
+  --rh-glow-orange: rgba(230, 81, 36, 0.15);
+  --rh-glow-maroon: rgba(163, 38, 56, 0.1);
+
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  --shadow-sm: var(--rv-shadow-card);
+  --shadow-md: var(--rv-shadow-float);
+  --shadow-lg: 0 12px 40px rgba(45, 52, 54, 0.08);
+  --radius-sm: var(--rv-radius-sm);
+  --radius-md: var(--rv-radius-md);
+  --radius-lg: var(--rv-radius-lg);
+  --radius-xl: var(--rv-radius-xl);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--rv-charcoal);
+  background: var(--rv-page-bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+.auth-brand__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--rv-maroon);
+}
+
+a {
+  color: var(--rv-maroon);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--rh-orange-hover);
+}
+
+.brand-mark {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.brand-mark--nav {
+  width: 44px;
+  height: 44px;
+}
+
+.brand-mark--auth {
+  width: min(220px, 70vw);
+  height: auto;
+  margin: 0 auto 1.25rem;
+}
+
+/* Reusable card shell (RishiVerse) */
+.rv-card {
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-border);
+  border-radius: var(--rv-radius-lg);
+  box-shadow: var(--rv-shadow-card);
+}
+
+/* —— Auth —— */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--rv-page-bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--rv-surface);
+  border-radius: var(--rv-radius-xl);
+  padding: 2.5rem 2.25rem;
+  box-shadow: var(--rv-shadow-float);
+  border: 1px solid var(--rv-border);
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.auth-brand__eyebrow {
+  font-size: 0.7rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rv-muted);
+  margin-bottom: 0.5rem;
+}
+
+.auth-brand__title {
+  font-size: 1.65rem;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--rv-maroon);
+}
+
+.auth-brand__subtitle {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  color: var(--rv-muted);
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-form label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rv-muted);
+  margin-bottom: 0.35rem;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: var(--rv-radius-pill);
+  border: 1px solid var(--rv-border-strong);
+  background: var(--rv-surface);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: var(--rv-charcoal);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-form input::placeholder {
+  color: rgba(45, 52, 54, 0.38);
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--rv-maroon);
+  box-shadow: 0 0 0 3px var(--rh-glow-maroon);
+}
+
+.auth-form__submit {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border: none;
+  border-radius: var(--rv-radius-pill);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: var(--rv-maroon);
+  box-shadow: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.auth-form__submit:hover:not(:disabled) {
+  background: var(--rv-maroon-dark);
+  transform: translateY(-1px);
+}
+
+.auth-form__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auth-submit__inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.auth-msg {
+  padding: 0.75rem 1rem;
+  border-radius: var(--rv-radius-sm);
+  font-size: 0.9rem;
+  background: var(--rv-active);
+  border: 1px solid var(--rv-active-border);
+  color: var(--rv-maroon-dark);
+}
+
+.auth-msg--error {
+  background: #fff5f5;
+  border-color: rgba(163, 38, 56, 0.25);
+  color: var(--rv-maroon-dark);
+}
+
+.auth-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--rv-muted);
+}
+
+/* —— Skeletons / shimmer —— */
+:root {
+  --sk-base: rgba(148, 163, 184, 0.22);
+  --sk-highlight: rgba(248, 250, 252, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sk-highlight: rgba(248, 250, 252, 0.6);
+  }
+}
+
+.sk {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  background: var(--sk-base);
+}
+
+.sk::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, var(--sk-highlight) 50%, transparent 100%);
+  animation: sk-shimmer 1.25s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk::after {
+    animation: none;
+  }
+}
+
+@keyframes sk-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.sk-card {
+  border-radius: var(--rv-radius-lg);
+  border: 1px solid rgba(45, 52, 54, 0.06);
+  background: linear-gradient(175deg, #ffffff 0%, #fefcfc 55%, #faf7f8 100%);
+  box-shadow: var(--rv-shadow-card);
+  padding: 14px 14px 14px;
+}
+
+.sk-text {
+  width: 100%;
+}
+
+.sk-stat-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sk-chart-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sk-chart-card__plot {
+  display: block;
+  margin-top: 12px;
+}
+
+.sk-chart-card__legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sk-table {
+  display: grid;
+  gap: 10px;
+  padding: 10px 2px;
+}
+
+.sk-table__row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  align-items: center;
+}
+
+.sk-table__row--head {
+  opacity: 0.7;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(45, 52, 54, 0.06);
+}
+
+.sk-list {
+  display: grid;
+  gap: 12px;
+}
+
+.sk-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(45, 52, 54, 0.06);
+}
+
+.sk-list__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sk-inline-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: sk-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-inline-spinner {
+    animation: none;
+  }
+}
+
+@keyframes sk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

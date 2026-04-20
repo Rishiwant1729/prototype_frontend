@@ -1,54 +1,118 @@
 import { formatDistanceToNow } from "../../utils/timeUtils";
-import { 
+import {
   Dumbbell,
   Waves,
   CircleDot,
-  Package,
   Radio,
-  LogIn,
-  LogOut,
-  RotateCcw,
   Users,
-  Activity,
-  Inbox
+  UserRoundSearch
 } from "lucide-react";
 
-export default function Sidebar({ 
-  facilityStats, 
-  recentFacilityScans = [], 
-  recentSportsRoomActivity = [] 
+export default function Sidebar({
+  facilityStats,
+  recentScans = [],
+  mergedRecentOps = [],
+  studentQuery = "",
+  onStudentQueryChange
 }) {
-  
   const getFacilityIcon = (facility) => {
     switch (facility) {
-      case "GYM": return <Dumbbell size={14} />;
-      case "SWIMMING": return <Waves size={14} />;
-      case "BADMINTON": return <CircleDot size={14} />;
-      default: return <Activity size={14} />;
+      case "GYM":
+        return <Dumbbell size={14} />;
+      case "SWIMMING":
+        return <Waves size={14} />;
+      case "BADMINTON":
+        return <CircleDot size={14} />;
+      default:
+        return <Radio size={14} />;
     }
   };
 
   const getFacilityName = (facility) => {
     switch (facility) {
-      case "GYM": return "Gymnasium";
-      case "SWIMMING": return "Swimming Pool";
-      case "BADMINTON": return "Badminton Court";
-      default: return facility;
+      case "GYM":
+        return "Gymnasium";
+      case "SWIMMING":
+        return "Swimming pool";
+      case "BADMINTON":
+        return "Badminton court";
+      case "SPORTS_ROOM":
+        return "Sport room";
+      default:
+        return facility;
     }
   };
 
+  const q = studentQuery.trim().toLowerCase();
+  const searchHit = q
+    ? recentScans.find((s) => String(s.student || "").toLowerCase().includes(q))
+    : null;
+
+  const timelineDotClass = (action) => {
+    const a = String(action || "").toUpperCase();
+    if (a === "ENTRY") return "kc-ops-timeline__dot--entry";
+    if (a === "EXIT") return "kc-ops-timeline__dot--exit";
+    if (a === "ISSUED" || a === "ISSUE") return "kc-ops-timeline__dot--issue";
+    if (a === "RETURNED" || a === "RETURN") return "kc-ops-timeline__dot--return";
+    return "kc-ops-timeline__dot--neutral";
+  };
+
+  const timelineVerb = (action) => {
+    const a = String(action || "").toUpperCase();
+    if (a === "ENTRY") return "Entry";
+    if (a === "EXIT") return "Exit";
+    if (a === "ISSUED" || a === "ISSUE") return "Issue";
+    if (a === "RETURNED" || a === "RETURN") return "Return";
+    return a || "Event";
+  };
+
   return (
-    <div className="sidebar">
-      {/* Section 1: Live Active Students (Entry/Exit Facilities Only) */}
-      <div className="sidebar-card">
+    <div className="sidebar kc-ops-sidebar">
+      <section className="sidebar-card kc-ops-search-card">
         <h3 className="sidebar-card__title">
           <span className="sidebar-card__icon">
-            <Users size={16} />
+            <UserRoundSearch size={18} strokeWidth={2.25} />
           </span>
-          Live Active Students
+          Search student
         </h3>
-        <p className="sidebar-card__subtitle">Entry/Exit Facilities</p>
-        
+        <div className="kc-ops-search-wrap">
+          <UserRoundSearch className="kc-ops-search-icon" size={18} strokeWidth={2} aria-hidden />
+          <input
+            type="search"
+            className="kc-ops-search-input"
+            placeholder="ID or name…"
+            value={studentQuery}
+            onChange={(e) => onStudentQueryChange?.(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+        {searchHit ? (
+          <div className="kc-ops-search-result">
+            <div className="kc-ops-search-result__row">
+              <div>
+                <p className="kc-ops-search-result__name">{searchHit.student}</p>
+                <p className="kc-ops-search-result__id">
+                  {getFacilityName(searchHit.facility)} · {String(searchHit.action || "").toUpperCase()}
+                </p>
+              </div>
+              <span className="kc-ops-pill kc-ops-pill--accent">Recent</span>
+            </div>
+            <p className="kc-ops-search-result__hint">Latest tap in the activity log</p>
+          </div>
+        ) : q ? (
+          <p className="kc-ops-search-empty">No recent tap matches this search.</p>
+        ) : null}
+      </section>
+
+      <section className="sidebar-card">
+        <h3 className="sidebar-card__title">
+          <span className="sidebar-card__icon">
+            <Users size={18} strokeWidth={2.25} />
+          </span>
+          Live active students
+        </h3>
+        <p className="sidebar-card__subtitle">Entry / exit facilities</p>
+
         <div className="live-stats">
           <div className="live-stat-item">
             <div className="live-stat-icon live-stat-icon--gym">
@@ -65,7 +129,7 @@ export default function Sidebar({
               <CircleDot size={20} />
             </div>
             <div className="live-stat-info">
-              <span className="live-stat-label">Badminton Court</span>
+              <span className="live-stat-label">Badminton court</span>
             </div>
             <div className="live-stat-count">{facilityStats.BADMINTON || 0}</div>
           </div>
@@ -75,90 +139,43 @@ export default function Sidebar({
               <Waves size={20} />
             </div>
             <div className="live-stat-info">
-              <span className="live-stat-label">Swimming Pool</span>
+              <span className="live-stat-label">Swimming pool</span>
             </div>
             <div className="live-stat-count">{facilityStats.SWIMMING || 0}</div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Section 2: Recent Facility Scans (Entry/Exit Only) */}
-      <div className="sidebar-card">
+      <section className="sidebar-card">
         <h3 className="sidebar-card__title">
           <span className="sidebar-card__icon">
-            <Radio size={16} />
+            <Radio size={18} strokeWidth={2.25} />
           </span>
-          Recent Facility Scans
+          Recent operations
         </h3>
-        <p className="sidebar-card__subtitle">Gym • Badminton • Swimming</p>
-        
-        <div className="activity-list">
-          {recentFacilityScans.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">
-                <Inbox size={24} />
-              </div>
-              <p>No recent scans</p>
-            </div>
+        <p className="sidebar-card__subtitle">Gates & sport room</p>
+
+        <div className="kc-ops-timeline">
+          {mergedRecentOps.length === 0 ? (
+            <p className="kc-ops-timeline__empty">No operations yet</p>
           ) : (
-            recentFacilityScans.slice(0, 8).map((scan) => (
-              <div key={scan.id} className={`activity-item activity-item--${scan.action.toLowerCase()}`}>
-                <div className="activity-item__icon">
-                  {getFacilityIcon(scan.facility)}
-                </div>
-                <div className="activity-item__content">
-                  <span className="activity-item__name">{scan.student}</span>
-                  <span className="activity-item__facility">{getFacilityName(scan.facility)}</span>
-                </div>
-                <div className={`activity-item__badge activity-item__badge--${scan.action.toLowerCase()}`}>
-                  {scan.action === "ENTRY" ? <LogIn size={10} /> : <LogOut size={10} />}
-                  <span>{scan.action}</span>
+            mergedRecentOps.map((row) => (
+              <div key={row.id} className="kc-ops-timeline__item">
+                <span className={`kc-ops-timeline__dot ${timelineDotClass(row.action)}`} />
+                <div className="kc-ops-timeline__body">
+                  <p className="kc-ops-timeline__title">
+                    <span className="kc-ops-timeline__verb">{timelineVerb(row.action)}:</span>{" "}
+                    {row.student}
+                  </p>
+                  <p className="kc-ops-timeline__meta">
+                    {formatDistanceToNow(row.time)} · {getFacilityName(row.facility)}
+                  </p>
                 </div>
               </div>
             ))
           )}
         </div>
-      </div>
-
-      {/* Section 3: Recent Sport Room Activity */}
-      <div className="sidebar-card">
-        <h3 className="sidebar-card__title">
-          <span className="sidebar-card__icon">
-            <Package size={16} />
-          </span>
-          Sport Room Activity
-        </h3>
-        <p className="sidebar-card__subtitle">Equipment Issue & Return</p>
-        
-        <div className="activity-list">
-          {recentSportsRoomActivity.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">
-                <Package size={24} />
-              </div>
-              <p>No recent activity</p>
-            </div>
-          ) : (
-            recentSportsRoomActivity.slice(0, 8).map((activity) => (
-              <div key={activity.id} className={`activity-item activity-item--${activity.action.toLowerCase()}`}>
-                <div className="activity-item__icon">
-                  {activity.action === "ISSUED" ? <Package size={14} /> : <RotateCcw size={14} />}
-                </div>
-                <div className="activity-item__content">
-                  <span className="activity-item__name">{activity.student}</span>
-                  <span className="activity-item__facility">
-                    {activity.itemCount ? `${activity.itemCount} item(s)` : "Sport Room"}
-                  </span>
-                </div>
-                <div className={`activity-item__badge activity-item__badge--${activity.action.toLowerCase()}`}>
-                  {activity.action === "ISSUED" ? <Package size={10} /> : <RotateCcw size={10} />}
-                  <span>{activity.action}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
