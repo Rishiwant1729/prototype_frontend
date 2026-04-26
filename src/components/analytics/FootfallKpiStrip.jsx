@@ -1,27 +1,40 @@
 import { useMemo } from "react";
 import {
+  Users,
   LogIn,
   LogOut,
   Clock,
+  Timer,
   UserCheck,
-  TrendingUp,
-  TrendingDown,
-  Minus
+  AlertTriangle,
 } from "lucide-react";
 
 /**
- * Compact footfall KPI row for analytics overview (period-scoped).
+ * Compact KPI row for analytics overview.
+ * Mixes real-time occupancy (from overview) + period-scoped footfall (from summary).
  */
-export default function FootfallKpiStrip({ summary, dateRange }) {
+export default function FootfallKpiStrip({ summary, dateRange, overview, alerts }) {
   const cards = useMemo(() => {
-    if (!summary?.kpis) return [];
+    if (!summary?.kpis && !overview) return [];
     const k = summary.kpis;
-    const growth = k.entries_growth_pct;
     const periodHint = dateRange?.startDate && dateRange?.endDate
       ? `${dateRange.startDate} → ${dateRange.endDate}`
       : "Selected period";
 
+    const currentOccupancy = Number(overview?.occupancy?.total ?? 0);
+    const avgStay = k.avg_session_minutes != null ? `${k.avg_session_minutes} min` : "—";
+    const missingExits = Number(k.missing_exits_over_4h ?? 0);
+
     return [
+      {
+        id: "occupancy",
+        label: "Current occupancy",
+        value: currentOccupancy,
+        sub: "Live right now",
+        Icon: Users,
+        accent: "occupancy",
+        trend: null
+      },
       {
         id: "entries",
         label: "Total entries",
@@ -50,6 +63,15 @@ export default function FootfallKpiStrip({ summary, dateRange }) {
         trend: null
       },
       {
+        id: "avgStay",
+        label: "Avg. stay",
+        value: avgStay,
+        sub: "Completed sessions",
+        Icon: Timer,
+        accent: "avgstay",
+        trend: null
+      },
+      {
         id: "unique",
         label: "Unique visitors",
         value: k.unique_visitors ?? 0,
@@ -59,16 +81,16 @@ export default function FootfallKpiStrip({ summary, dateRange }) {
         trend: null
       },
       {
-        id: "growth",
-        label: "Entry trend vs prior",
-        value: growth === null || growth === undefined ? "—" : `${growth > 0 ? "+" : ""}${growth}%`,
-        sub: "Same-length period before range",
-        Icon: growth === null || growth === undefined || growth === 0 ? Minus : growth > 0 ? TrendingUp : TrendingDown,
-        accent: "growth",
+        id: "anomalies",
+        label: "Missing exits",
+        value: missingExits,
+        sub: "Open entries > 4h (in range)",
+        Icon: AlertTriangle,
+        accent: "anomaly",
         trend: null
       }
-    ];
-  }, [summary, dateRange]);
+    ].filter(Boolean);
+  }, [summary, dateRange, overview]);
 
   if (!cards.length) return null;
 

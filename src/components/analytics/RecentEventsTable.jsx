@@ -12,6 +12,9 @@ import {
   Clock,
   User,
   Building2,
+  CircleDot,
+  Dumbbell,
+  Waves,
   FileText,
   ChevronDown
 } from "lucide-react";
@@ -32,7 +35,14 @@ const facilityLabel = (id) => {
   }
 };
 
-export default function RecentEventsTable({ events, compact = false, layout = "default", loading = false }) {
+export default function RecentEventsTable({
+  events,
+  compact = false,
+  layout = "default",
+  loading = false,
+  /** default: show facility. "equipment": label last column as equipment + render equipment icon */
+  facilityMode = "facility"
+}) {
   const [filter, setFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("timestamp");
@@ -163,6 +173,50 @@ export default function RecentEventsTable({ events, compact = false, layout = "d
   }
 
   const footfall = layout === "footfall";
+  const showEquipmentColumn = facilityMode === "equipment" && !footfall;
+
+  const equipmentHeader = showEquipmentColumn ? (
+    <>
+      <Package size={12} />
+      Equipment
+    </>
+  ) : (
+    <>
+      <Building2 size={12} />
+      Facility
+    </>
+  );
+
+  const renderFacilityCell = (event) => {
+    if (!showEquipmentColumn) {
+      return (
+        <span className="events-table__facility">
+          <Building2 size={12} />
+          {event.facility_id}
+        </span>
+      );
+    }
+
+    const raw = String(event.facility_id || "").trim();
+    const primary = raw.split(",")[0]?.trim().toLowerCase();
+
+    const iconForEquipment = () => {
+      // heuristic mapping based on keywords in equipment name
+      if (!primary) return Package;
+      if (primary.includes("badminton") || primary.includes("shuttle")) return CircleDot;
+      if (primary.includes("swim") || primary.includes("goggle") || primary.includes("cap")) return Waves;
+      if (primary.includes("cricket") || primary.includes("bat")) return Dumbbell;
+      return event.type === "EQUIPMENT_RETURN" ? RotateCcw : Package;
+    };
+
+    const Icon = iconForEquipment();
+    return (
+      <span className="events-table__facility">
+        <Icon size={12} />
+        {raw || "—"}
+      </span>
+    );
+  };
 
   return (
     <div
@@ -260,8 +314,7 @@ export default function RecentEventsTable({ events, compact = false, layout = "d
                   </th>
                 )}
                 <th className="events-table__th">
-                  <Building2 size={12} />
-                  Facility
+                  {equipmentHeader}
                 </th>
                 {!compact && (
                   <th className="events-table__th">
@@ -306,10 +359,7 @@ export default function RecentEventsTable({ events, compact = false, layout = "d
                     <td className="events-table__td events-table__td--id">{event.student_id || "-"}</td>
                   )}
                   <td className="events-table__td">
-                    <span className="events-table__facility">
-                      <Building2 size={12} />
-                      {event.facility_id}
-                    </span>
+                    {renderFacilityCell(event)}
                   </td>
                   {!compact && (
                     <td className="events-table__td events-table__td--details">

@@ -4,9 +4,14 @@ import useDashboardUpdates from "../hooks/useDashboardUpdates";
 import KPICards from "../components/analytics/KPICards";
 import FootfallKpiStrip from "../components/analytics/FootfallKpiStrip";
 import TimeSeriesChart from "../components/analytics/TimeSeriesChart";
+import HighchartsTimeSeries from "../components/analytics/HighchartsTimeSeries";
 import EntryExitGroupedBar from "../components/analytics/EntryExitGroupedBar";
 import FacilityShareDonut from "../components/analytics/FacilityShareDonut";
 import BusyTimeSlotsPanel from "../components/analytics/BusyTimeSlotsPanel";
+import RepeatNewSplit from "../components/analytics/RepeatNewSplit";
+import DurationHistogram from "../components/analytics/DurationHistogram";
+import CapacityUtilizationPanel from "../components/analytics/CapacityUtilizationPanel";
+import SmartInsightsPanel from "../components/analytics/SmartInsightsPanel";
 import RecentEventsTable from "../components/analytics/RecentEventsTable";
 import AlertsPanel from "../components/analytics/AlertsPanel";
 import FiltersBar from "../components/analytics/FiltersBar";
@@ -106,7 +111,8 @@ function describeDashboardFetchError(err) {
       err?.code === "ECONNREFUSED" ||
       String(err?.message || "").toLowerCase().includes("network");
     if (isNetwork) {
-      return "Cannot reach the API server. The analytics app calls http://localhost:3000/api — start the backend from the `backend` folder (for example `npm run dev`) and keep it on port 3000, then use Retry.";
+      const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+      return `Cannot reach the API server. The analytics app calls ${base} — start the backend from the \`backend\` folder (for example \`npm run dev\`) and ensure it matches your VITE_API_BASE_URL, then use Retry.`;
     }
     return err?.message
       ? `Cannot load dashboard data: ${err.message}`
@@ -531,7 +537,7 @@ export default function AnalyticsDashboard() {
                           ))}
                         </section>
                       ) : (
-                        <FootfallKpiStrip summary={footfallSummary} dateRange={dateRange} />
+                        <FootfallKpiStrip summary={footfallSummary} dateRange={dateRange} overview={overview} alerts={alerts} />
                       )}
 
                       <div className="chart-card chart-card--full-block">
@@ -544,7 +550,7 @@ export default function AnalyticsDashboard() {
                             ? "Separate lines for each entry/exit gate (Gym, Badminton, Pool). Sport room is not included. Points are slightly larger at the peak aggregate entry period."
                             : `Entries (green) and exits (coral) for ${getFacilityName(facility)} only — other gates are hidden.`}
                         </p>
-                        <TimeSeriesChart data={timeSeriesData} loading={loading && overview && !timeSeriesData} showPeakMarker />
+                        <HighchartsTimeSeries data={timeSeriesData} loading={loading && overview && !timeSeriesData} height={290} />
                       </div>
 
                       <div className="chart-card chart-card--full-block">
@@ -573,6 +579,44 @@ export default function AnalyticsDashboard() {
                             <span>Top busy time slots</span>
                           </h3>
                           <BusyTimeSlotsPanel hourlyData={hourlyData} loading={loading && overview && !hourlyData} />
+                        </div>
+                      </div>
+
+                      <div className="analytics-overview-grid analytics-overview-grid--insights">
+                        <div className="chart-card">
+                          <h3>
+                            <Activity size={18} strokeWidth={2} />
+                            <span>Repeat vs new visitors</span>
+                          </h3>
+                          <p className="chart-card__scope-note">Behavioral split across the selected range.</p>
+                          <RepeatNewSplit kpis={footfallSummary?.kpis} loading={loading && overview && !footfallSummary} />
+                        </div>
+                        <div className="chart-card">
+                          <h3>
+                            <Activity size={18} strokeWidth={2} />
+                            <span>Stay duration distribution</span>
+                          </h3>
+                          <p className="chart-card__scope-note">How long students stay (completed sessions).</p>
+                          <DurationHistogram bins={footfallSummary?.duration_distribution} loading={loading && overview && !footfallSummary} />
+                        </div>
+                      </div>
+
+                      <div className="analytics-overview-grid analytics-overview-grid--insights">
+                        <div className="chart-card">
+                          <h3>
+                            <Activity size={18} strokeWidth={2} />
+                            <span>Capacity utilization (live)</span>
+                          </h3>
+                          <p className="chart-card__scope-note">Current occupancy vs configured capacity reference.</p>
+                          <CapacityUtilizationPanel overview={overview} loading={loading && !overview} />
+                        </div>
+                        <div className="chart-card">
+                          <SmartInsightsPanel
+                            summary={footfallSummary}
+                            hourlyData={hourlyData}
+                            overview={overview}
+                            loading={loading && overview && !footfallSummary}
+                          />
                         </div>
                       </div>
                     </>

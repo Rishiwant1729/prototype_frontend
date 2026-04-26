@@ -11,6 +11,8 @@ import {
 const WebSocketContext = createContext(null);
 
 function getWsUrl() {
+  const explicit = import.meta.env.VITE_WS_URL;
+  if (explicit) return explicit;
   const api = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
   try {
     const { protocol, host } = new URL(api);
@@ -98,14 +100,6 @@ export function WebSocketProvider({ children }) {
           reconnectTimeoutRef.current = null;
           connect();
         }, 1500);
-      };
-
-      ws.onping = () => {
-        try {
-          if (typeof ws.pong === "function") ws.pong();
-        } catch {
-          /* ignore */
-        }
       };
     };
 

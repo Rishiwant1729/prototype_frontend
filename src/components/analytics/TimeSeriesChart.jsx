@@ -2,6 +2,31 @@ import { useMemo } from "react";
 import { TrendingUp, TrendingDown, LineChart, LogIn, LogOut } from "lucide-react";
 import { SkeletonBlock } from "../common/Skeleton";
 
+function smoothPath(coords) {
+  if (!coords || coords.length === 0) return "";
+  if (coords.length === 1) return `M ${coords[0].x} ${coords[0].y}`;
+  if (coords.length === 2) return `M ${coords[0].x} ${coords[0].y} L ${coords[1].x} ${coords[1].y}`;
+
+  const d = [`M ${coords[0].x} ${coords[0].y}`];
+  const tension = 0.8; // higher = smoother, less sharp corners
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[Math.max(0, i - 1)];
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const p3 = coords[Math.min(coords.length - 1, i + 2)];
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+
+    d.push(`C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`);
+  }
+
+  return d.join(" ");
+}
+
 const FACILITY_LINE_CLASS = [
   "timeseries__line--facility-0",
   "timeseries__line--facility-1",
@@ -71,11 +96,12 @@ export default function TimeSeriesChart({
 
     const paths = bf.map((series) => {
       const pts = series.data || [];
-      return pts.map((p, i) => {
+      const coords = pts.map((p, i) => {
         const x = (i / Math.max(points.length - 1, 1)) * 100;
         const y = 100 - ((p.entries || 0) / maxVal) * 100;
-        return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-      }).join(" ");
+        return { x, y };
+      });
+      return smoothPath(coords);
     });
 
     return { points, maxVal, peakEntryIdx, seriesList: bf, paths };
@@ -145,6 +171,12 @@ export default function TimeSeriesChart({
               role="img"
               aria-label={`Entry footfall by facility. ${periodLabel}. One line per entry gate (sport room excluded). Peak aggregate entries at bucket ${peakEntryIdx >= 0 ? points[peakEntryIdx]?.period : "n/a"}.`}
             >
+              <defs>
+                <linearGradient id="tsGridFade" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(148,163,184,0.22)" />
+                  <stop offset="100%" stopColor="rgba(148,163,184,0.10)" />
+                </linearGradient>
+              </defs>
               <line x1="0" y1="25" x2="100" y2="25" className="timeseries__grid-line" />
               <line x1="0" y1="50" x2="100" y2="50" className="timeseries__grid-line" />
               <line x1="0" y1="75" x2="100" y2="75" className="timeseries__grid-line" />
@@ -165,7 +197,7 @@ export default function TimeSeriesChart({
                       key={`${series.facility_id}-${i}`}
                       cx={xAt(i)}
                       cy={100 - ((p.entries || 0) / maxVal) * 100}
-                      r={showPeak && i === peakEntryIdx ? "2.1" : "1.1"}
+                      r={showPeak && i === peakEntryIdx ? "1.7" : "0.95"}
                       className={`timeseries__point ${FACILITY_POINT_CLASS[si % FACILITY_POINT_CLASS.length]}`}
                     />
                   ))
@@ -260,21 +292,18 @@ export default function TimeSeriesChart({
   const denom = Math.max(points.length - 1, 1);
   const xAt = (i) => (i / denom) * 100;
 
-  const entriesPath = points
-    .map((p, i) => {
-      const x = xAt(i);
-      const y = 100 - (p.entries / maxValue) * 100;
-      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
+  const entriesCoords = points.map((p, i) => ({
+    x: xAt(i),
+    y: 100 - ((p.entries || 0) / maxValue) * 100
+  }));
+  const exitsCoords = points.map((p, i) => ({
+    x: xAt(i),
+    y: 100 - ((p.exits || 0) / maxValue) * 100
+  }));
 
-  const exitsPath = points
-    .map((p, i) => {
-      const x = xAt(i);
-      const y = 100 - (p.exits / maxValue) * 100;
-      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
+  const entriesPath = smoothPath(entriesCoords);
+
+  const exitsPath = smoothPath(exitsCoords);
 
   const entriesAreaPath = `${entriesPath} L 100 100 L 0 100 Z`;
 
@@ -305,6 +334,20 @@ export default function TimeSeriesChart({
             role="img"
             aria-label={`Entries and exits over time. ${periodLabel}. Peak entries at bucket ${peakEntryIdx >= 0 ? points[peakEntryIdx]?.period : "n/a"}.`}
           >
+            <defs>
+              <linearGradient id="tsEntries" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#16a34a" />
+              </linearGradient>
+              <linearGradient id="tsExits" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#fb7185" />
+                <stop offset="100%" stopColor="#f97316" />
+              </linearGradient>
+              <linearGradient id="tsEntriesArea" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="rgba(52,211,153,0.22)" />
+                <stop offset="100%" stopColor="rgba(52,211,153,0.02)" />
+              </linearGradient>
+            </defs>
             <line x1="0" y1="25" x2="100" y2="25" className="timeseries__grid-line" />
             <line x1="0" y1="50" x2="100" y2="50" className="timeseries__grid-line" />
             <line x1="0" y1="75" x2="100" y2="75" className="timeseries__grid-line" />
@@ -320,7 +363,7 @@ export default function TimeSeriesChart({
                   key={`entry-${i}`}
                   cx={xAt(i)}
                   cy={100 - (p.entries / maxValue) * 100}
-                  r={showPeak && i === peakEntryIdx ? "2.2" : "1.2"}
+                  r={showPeak && i === peakEntryIdx ? "1.75" : "1.0"}
                   className={`timeseries__point timeseries__point--entries${
                     showPeak && i === peakEntryIdx ? " timeseries__point--peak-entry" : ""
                   }`}
@@ -333,7 +376,7 @@ export default function TimeSeriesChart({
                   key={`exit-${i}`}
                   cx={xAt(i)}
                   cy={100 - (p.exits / maxValue) * 100}
-                  r="1.2"
+                  r="1.0"
                   className="timeseries__point timeseries__point--exits"
                 />
               ))}

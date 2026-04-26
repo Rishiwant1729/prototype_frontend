@@ -16,6 +16,7 @@ import FacilityMapPanel from "./FacilityMapPanel";
 import { useRailScanFeed } from "../../context/RailScanFeedContext";
 import { Bell, Download, Filter, Plus } from "lucide-react";
 import "../../styles/dashboard.css";
+import api from "../../api/axios";
 
 function logActionLabel(facility, action) {
   const a = String(action || "").toUpperCase();
@@ -257,29 +258,7 @@ export default function DashboardLayout() {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/api/sports-room/issue", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ student_id, items })
-      });
-
-      // Handle 401 Unauthorized
-      if (response.status === 401) {
-        setActiveCard({
-          type: "ERROR",
-          payload: {
-            message: "Session Expired",
-            reason: "Please login again"
-          }
-        });
-        autoDismiss(3000);
-        return;
-      }
-
-      const result = await response.json();
+      const { data: result } = await api.post("/sports-room/issue", { student_id, items });
 
       if (result.mode === "SUCCESS") {
         setRecentIssues((prev) => [
@@ -311,6 +290,17 @@ export default function DashboardLayout() {
         autoDismiss(3000);
       }
     } catch (err) {
+      if (err?.response?.status === 401) {
+        setActiveCard({
+          type: "ERROR",
+          payload: {
+            message: "Session Expired",
+            reason: "Please login again"
+          }
+        });
+        autoDismiss(3000);
+        return;
+      }
       setActiveCard({
         type: "ERROR",
         payload: {
@@ -339,28 +329,7 @@ export default function DashboardLayout() {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/api/sports-room/return", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ issue_id, returns })
-      });
-
-      if (response.status === 401) {
-        setActiveCard({
-          type: "ERROR",
-          payload: {
-            message: "Session Expired",
-            reason: "Please login again"
-          }
-        });
-        autoDismiss(3000);
-        return;
-      }
-
-      const result = await response.json();
+      const { data: result } = await api.post("/sports-room/return", { issue_id, returns });
 
       if (result.mode === "SUCCESS") {
         setActiveCard({
@@ -386,6 +355,17 @@ export default function DashboardLayout() {
         autoDismiss(3000);
       }
     } catch (err) {
+      if (err?.response?.status === 401) {
+        setActiveCard({
+          type: "ERROR",
+          payload: {
+            message: "Session Expired",
+            reason: "Please login again"
+          }
+        });
+        autoDismiss(3000);
+        return;
+      }
       setActiveCard({
         type: "ERROR",
         payload: {

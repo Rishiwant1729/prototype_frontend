@@ -28,8 +28,18 @@ export default function Login() {
       } else {
         setMsg(res.data.reason || "Login failed");
       }
-    } catch {
-      setMsg("Invalid credentials");
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 503) {
+        setMsg(
+          err?.response?.data?.reason ||
+            "Database unavailable. Update backend/.env DATABASE_URL and ensure MySQL is running, then retry."
+        );
+      } else if (status === 401) {
+        setMsg("Invalid credentials");
+      } else {
+        setMsg("Sign in failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -27,10 +27,16 @@ function parseJwt(token) {
   }
 }
 
+function isExpired(payload) {
+  const exp = Number(payload?.exp);
+  if (!Number.isFinite(exp)) return false;
+  return Date.now() >= exp * 1000;
+}
+
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
-  const [role, setRole] = useState(() => localStorage.getItem("role") || "MANAGEMENT");
-  const [userName, setUserName] = useState(() => localStorage.getItem("userName") || "");
+  const [token, setToken] = useState(() => sessionStorage.getItem("token"));
+  const [role, setRole] = useState(() => sessionStorage.getItem("role") || "MANAGEMENT");
+  const [userName, setUserName] = useState(() => sessionStorage.getItem("userName") || "");
   const [loading, setLoading] = useState(false);
 
   const isAuthenticated = !!token;
@@ -39,6 +45,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (token) {
       const payload = parseJwt(token);
+      if (payload && isExpired(payload)) {
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("role");
+        sessionStorage.removeItem("userName");
+        setToken(null);
+        setRole("MANAGEMENT");
+        setUserName("");
+        return;
+      }
       if (payload) {
         setRole(payload.role || "MANAGEMENT");
         setUserName(payload.name || "");
@@ -47,18 +62,18 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = (jwt, userRole, name) => {
-    localStorage.setItem("token", jwt);
-    localStorage.setItem("role", userRole || "MANAGEMENT");
-    localStorage.setItem("userName", name || "");
+    sessionStorage.setItem("token", jwt);
+    sessionStorage.setItem("role", userRole || "MANAGEMENT");
+    sessionStorage.setItem("userName", name || "");
     setToken(jwt);
     setRole(userRole || "MANAGEMENT");
     setUserName(name || "");
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("userName");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("role");
+    sessionStorage.removeItem("userName");
     setToken(null);
     setRole("MANAGEMENT");
     setUserName("");
